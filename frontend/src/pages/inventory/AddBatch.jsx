@@ -44,12 +44,13 @@ const AddBatch = () => {
   const [showMedicineDropdown, setShowMedicineDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingIndex, setEditingIndex] = useState(null);
-  const [editValues, setEditValues] = useState({ 
-    price: "", 
-    quantity: "", 
-    expiryDate: "" 
+  const [editValues, setEditValues] = useState({
+    price: "",
+    quantity: "",
+    expiryDate: "",
   });
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  
   const dropdownRef = useRef(null);
 
   const [medicines, setMedicines] = useState([]);
@@ -72,8 +73,8 @@ const AddBatch = () => {
     const defaultExpiryDate = new Date();
     defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 2);
     const defaultExpiryString = defaultExpiryDate.toISOString().split("T")[0];
-    
-    setCurrentMedicine(prev => ({
+
+    setCurrentMedicine((prev) => ({
       ...prev,
       // expiryDate: defaultExpiryString
     }));
@@ -95,6 +96,7 @@ const AddBatch = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMedicineDropdown]);
+
 
   // Determine redirect path based on user role
   const redirectPath =
@@ -148,11 +150,10 @@ const AddBatch = () => {
     );
   }, [totalWithMiscellaneous, batchDetails]);
 
-  const hasPriceMismatch = priceDifference > 0.01;
+
+
   const isPriceExceeded =
     totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0);
-  const canAddBatch = !hasPriceMismatch && medicines.length > 0;
-
   // Update miscellaneous amount when remaining amount changes
   useEffect(() => {
     if (currentMedicine.medicineName === "MISCELLANEOUS") {
@@ -162,6 +163,12 @@ const AddBatch = () => {
       }));
     }
   }, [remainingAmount, currentMedicine.medicineName]);
+
+
+    const hasPriceMismatch = priceDifference > 0.001;
+  const canAddBatch =
+    !hasPriceMismatch && medicines.length > 0;
+
 
   const handleMedicineInputChange = (e) => {
     const { name, value } = e.target;
@@ -205,10 +212,11 @@ const AddBatch = () => {
       setMiscellaneousAmount(miscAmount);
     } else {
       // Calculate what the new total would be if we add this medicine
-      const newMedicineTotal = 
+      const newMedicineTotal =
         parseFloat(currentMedicine.price) * parseInt(currentMedicine.quantity);
-      const newGrandTotal = totalMedicinePrice + newMedicineTotal + miscellaneousAmount;
-      
+      const newGrandTotal =
+        totalMedicinePrice + newMedicineTotal + miscellaneousAmount;
+
       // Check if adding this medicine would exceed the total price
       if (newGrandTotal > parseFloat(batchDetails?.overallPrice || 0)) {
         setError("Adding this medicine would exceed the total batch price.");
@@ -239,6 +247,53 @@ const AddBatch = () => {
       expiryDate: "",
     });
     setError("");
+  };
+
+  // Updated decimal input handler - only allows dot (.) as decimal separator
+  const handleDecimalInput = (e, fieldName, isEdit = false) => {
+    let value = e.target.value;
+
+    // Allow empty input
+    if (value === "") {
+      if (isEdit) {
+        setEditValues((prev) => ({ ...prev, [fieldName]: value }));
+      } else {
+        setCurrentMedicine((prev) => ({ ...prev, [fieldName]: value }));
+      }
+      return;
+    }
+
+    // Remove any non-numeric characters except dot (.)
+    value = value.replace(/[^0-9.]/g, "");
+
+    const dotIndex = value.indexOf(".");
+    if (dotIndex !== -1) {
+      value =
+        value.substring(0, dotIndex + 1) +
+        value.substring(dotIndex + 1).replace(/\./g, "");
+    }
+
+    // Ensure only one dot (.)
+    const parts = value.split(".");
+    if (parts.length > 2) {
+      value = parts[0] + "." + parts.slice(1).join("");
+    }
+
+    // Limit to 9 digits before decimal and 2 after
+    if (parts[0] && parts[0].length > 9) {
+      parts[0] = parts[0].substring(0, 9);
+    }
+    if (parts[1] && parts[1].length > 2) {
+      parts[1] = parts[1].substring(0, 2);
+    }
+
+    value = parts.join(".");
+
+    if (isEdit) {
+      setEditValues((prev) => ({ ...prev, [fieldName]: value }));
+    } else {
+      setCurrentMedicine((prev) => ({ ...prev, [fieldName]: value }));
+    }
   };
 
   const removeMedicine = (index) => {
@@ -290,13 +345,14 @@ const AddBatch = () => {
     }
 
     // Calculate the current total for this medicine
-    const currentMedicineTotal = medicines[index].price * medicines[index].quantity;
+    const currentMedicineTotal =
+      medicines[index].price * medicines[index].quantity;
     const newMedicineTotal = newPrice * newQuantity;
-    
+
     // Calculate the difference this edit would make
     const difference = newMedicineTotal - currentMedicineTotal;
     const newGrandTotal = totalWithMiscellaneous + difference;
-    
+
     // Check if editing would exceed the total price
     if (newGrandTotal > parseFloat(batchDetails?.overallPrice || 0)) {
       setError("Editing this medicine would exceed the total batch price.");
@@ -307,11 +363,11 @@ const AddBatch = () => {
     setMedicines((prev) =>
       prev.map((medicine, i) =>
         i === index
-          ? { 
-              ...medicine, 
-              price: newPrice, 
+          ? {
+              ...medicine,
+              price: newPrice,
               quantity: newQuantity,
-              expiryDate: newExpiryDate
+              expiryDate: newExpiryDate,
             }
           : medicine
       )
@@ -504,7 +560,9 @@ const AddBatch = () => {
                   onBlur={(e) => {
                     // Small delay to allow dropdown item clicks to register
                     setTimeout(() => {
-                      if (!dropdownRef.current?.contains(document.activeElement)) {
+                      if (
+                        !dropdownRef.current?.contains(document.activeElement)
+                      ) {
                         setShowMedicineDropdown(false);
                       }
                     }, 150);
@@ -565,11 +623,11 @@ const AddBatch = () => {
                     className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
                   />
                   <input
-                    type="number"
+                    type="text"
                     name="price"
                     value={currentMedicine.price}
-                    onChange={handleMedicineInputChange}
-                    step="0.01"
+                    onChange={(e) => handleDecimalInput(e, "price")}
+                    step="0.1"
                     min="0"
                     max={remainingAmount}
                     className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
@@ -593,33 +651,13 @@ const AddBatch = () => {
                       className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
                     />
                     <input
-                      type="number"
+                      type="text"
                       name="price"
                       value={currentMedicine.price}
-                      onChange={handleMedicineInputChange}
+                      onChange={(e) => handleDecimalInput(e, "price")}
                       step="0.01"
                       min="0.01"
                       max="999999999.99"
-                      onInput={(e) => {
-                        // Remove any non-digit and non-decimal characters
-                        let value = e.target.value.replace(/[^0-9.]/g, "");
-
-                        // Ensure only one decimal point
-                        const parts = value.split(".");
-                        if (parts.length > 2) {
-                          value = parts[0] + "." + parts.slice(1).join("");
-                        }
-
-                        // Limit to 9 digits before decimal and 2 after
-                        if (parts[0] && parts[0].length > 9) {
-                          parts[0] = parts[0].substring(0, 9);
-                        }
-                        if (parts[1] && parts[1].length > 2) {
-                          parts[1] = parts[1].substring(0, 2);
-                        }
-
-                        e.target.value = parts.join(".");
-                      }}
                       className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
                       placeholder="Enter price"
                     />
@@ -768,7 +806,10 @@ const AddBatch = () => {
                               max="99999"
                               onInput={(e) => {
                                 // Remove any non-digit characters
-                                let value = e.target.value.replace(/[^0-9]/g, "");
+                                let value = e.target.value.replace(
+                                  /[^0-9]/g,
+                                  ""
+                                );
 
                                 // Limit to 5 digits
                                 if (value.length > 5) {
@@ -789,33 +830,15 @@ const AddBatch = () => {
                         >
                           {editingIndex === index ? (
                             <input
-                              type="number"
+                              type="text"
                               name="price"
                               value={editValues.price}
-                              onChange={handleEditInputChange}
-                              step="0.01"
-                              min="0.01"
-                              onInput={(e) => {
-                                // Remove any non-digit and non-decimal characters
-                                let value = e.target.value.replace(/[^0-9.]/g, "");
-
-                                // Ensure only one decimal point
-                                const parts = value.split(".");
-                                if (parts.length > 2) {
-                                  value = parts[0] + "." + parts.slice(1).join("");
-                                }
-
-                                // Limit to 9 digits before decimal and 2 after
-                                if (parts[0] && parts[0].length > 9) {
-                                  parts[0] = parts[0].substring(0, 9);
-                                }
-                                if (parts[1] && parts[1].length > 2) {
-                                  parts[1] = parts[1].substring(0, 2);
-                                }
-
-                                e.target.value = parts.join(".");
-                                handleEditInputChange(e);
-                              }}
+                              onChange={(e) =>
+                                handleDecimalInput(e, "price", true)
+                              }
+                              step="0.1"
+                              min="0.1"
+                              max="999999999.99"
                               className={`w-24 px-2 py-1 text-center ${theme.input} rounded ${theme.borderSecondary} border ${theme.focus} focus:ring-1`}
                             />
                           ) : (
@@ -1033,7 +1056,7 @@ const AddBatch = () => {
             {/* Add Batch Button */}
             <button
               type="submit"
-              disabled={loading || !canAddBatch}
+              disabled={loading || !canAddBatch || editingIndex !== null}
               className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {loading ? (
@@ -1060,8 +1083,8 @@ const AddBatch = () => {
       >
         <div className="p-6">
           <p className={`mb-6 ${theme.textPrimary}`}>
-            This action cannot be undone. All medicines and miscellaneous amounts
-            you've added will be permanently deleted.
+            This action cannot be undone. All medicines and miscellaneous
+            amounts you've added will be permanently deleted.
           </p>
           <div className="flex justify-end space-x-3">
             <button

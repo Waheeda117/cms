@@ -191,7 +191,7 @@ const UpdateBatch = () => {
     );
   }, [totalWithMiscellaneous, batchDetails]);
 
-  const hasPriceMismatch = priceDifference > 0.01;
+  const hasPriceMismatch = priceDifference > 0.001;
   const isPriceExceeded =
     totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0);
   const canUpdateBatch = !hasPriceMismatch && medicines && medicines.length > 0;
@@ -1060,7 +1060,7 @@ const startEdit = (index, medicine) => {
             
             <button
               type="submit"
-              disabled={updateLoading || !canUpdateBatch}
+              disabled={updateLoading || !canUpdateBatch || editingIndex !== null}
               className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {updateLoading ? (
