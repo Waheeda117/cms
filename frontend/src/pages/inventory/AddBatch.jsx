@@ -43,14 +43,10 @@ const AddBatch = () => {
   const {
     medicines,
     miscellaneousAmount,
-    currentMedicine,
     addMedicine,
     removeMedicine,
     updateMedicine,
     setMiscellaneousAmount,
-    setCurrentMedicine,
-    updateCurrentMedicineField,
-    resetCurrentMedicine,
     clearBatchData,
     initializeBatch,
   } = useAddBatchStore();
@@ -72,12 +68,26 @@ const AddBatch = () => {
 
   // const [medicines, setMedicines] = useState([]);
   // const [miscellaneousAmount, setMiscellaneousAmount] = useState(0);
-  // const [currentMedicine, setCurrentMedicine] = useState({
-  //   medicineName: "",
-  //   quantity: "",
-  //   price: "",
-  //   expiryDate: "",
-  // });
+  const [currentMedicine, setCurrentMedicine] = useState({
+    medicineName: "",
+    quantity: "",
+    price: "",
+    expiryDate: "",
+  });
+
+  const updateCurrentMedicineField = (field, value) => {
+    setCurrentMedicine((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const resetCurrentMedicine = () => {
+    setCurrentMedicine({
+      medicineId: null,
+      medicineName: "",
+      quantity: "",
+      price: "",
+      expiryDate: "",
+    });
+  };
 
   useEffect(() => {
     if (routeBatchDetails) {
@@ -184,13 +194,23 @@ const AddBatch = () => {
 
   // Update miscellaneous amount when remaining amount changes
   useEffect(() => {
-    if (currentMedicine.medicineName === "MISCELLANEOUS") {
-      updateCurrentMedicineField("price", remainingAmount.toFixed(2));
+    if (
+      currentMedicine.medicineName === "MISCELLANEOUS" &&
+      currentMedicine.medicineId === 1
+    ) {
+      // Only update if the current price is different from remaining amount
+      const expectedPrice = remainingAmount.toFixed(2);
+      if (currentMedicine.price !== expectedPrice) {
+        setCurrentMedicine((prev) => ({
+          ...prev,
+          price: expectedPrice,
+        }));
+      }
     }
   }, [
     remainingAmount,
     currentMedicine.medicineName,
-    updateCurrentMedicineField,
+    currentMedicine.medicineId,
   ]);
 
   const hasPriceMismatch = priceDifference > 0.001;
@@ -274,7 +294,12 @@ const AddBatch = () => {
       if (isEdit) {
         setEditValues((prev) => ({ ...prev, [fieldName]: value }));
       } else {
-        updateCurrentMedicineField(fieldName, value);
+        // For miscellaneous, don't trigger the useEffect loop
+        if (currentMedicine.medicineId === 1 && fieldName === "price") {
+          setCurrentMedicine((prev) => ({ ...prev, [fieldName]: value }));
+        } else {
+          updateCurrentMedicineField(fieldName, value);
+        }
       }
       return;
     }
@@ -308,7 +333,12 @@ const AddBatch = () => {
     if (isEdit) {
       setEditValues((prev) => ({ ...prev, [fieldName]: value }));
     } else {
-      updateCurrentMedicineField(fieldName, value);
+      // For miscellaneous, directly update to prevent useEffect loop
+      if (currentMedicine.medicineId === 1 && fieldName === "price") {
+        setCurrentMedicine((prev) => ({ ...prev, [fieldName]: value }));
+      } else {
+        updateCurrentMedicineField(fieldName, value);
+      }
     }
   };
 
