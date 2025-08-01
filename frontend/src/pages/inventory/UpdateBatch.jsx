@@ -40,15 +40,14 @@ const UpdateBatch = () => {
   const { user } = useAuthStore();
 
   // Zustand store for persistence
-  const {
-    setBatchData,
-    getBatchData,
-    updateMedicines,
-    updateMiscellaneousAmount,
-    updateCurrentMedicine,
-    clearBatchData,
-    cleanupOldData,
-  } = useBatchUpdateStore();
+const {
+  setBatchData,
+  getBatchData,
+  updateMedicines,
+  updateMiscellaneousAmount,
+  clearBatchData,
+  cleanupOldData,
+} = useBatchUpdateStore();
 
   const [loading, setLoading] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
@@ -77,15 +76,13 @@ const UpdateBatch = () => {
   const [miscellaneousAmount, setMiscellaneousAmount] = useState(
     persistentData?.miscellaneousAmount || 0
   );
-  const [currentMedicine, setCurrentMedicine] = useState(
-    persistentData?.currentMedicine || {
-      medicineId: null,
-      medicineName: "",
-      quantity: "",
-      price: "",
-      expiryDate: "",
-    }
-  );
+const [currentMedicine, setCurrentMedicine] = useState({
+  medicineId: null,
+  medicineName: "",
+  quantity: "",
+  price: "",
+  expiryDate: "",
+});
 
   const redirectPath =
     user?.role === "admin"
@@ -121,18 +118,18 @@ const UpdateBatch = () => {
   }, [miscellaneousAmount, batchId, updateMiscellaneousAmount]);
 
   // Update persistent storage whenever current medicine form changes
-  useEffect(() => {
-    if (
-      batchId &&
-      (currentMedicine.medicineId ||
-        currentMedicine.medicineName ||
-        currentMedicine.quantity ||
-        currentMedicine.price ||
-        currentMedicine.expiryDate)
-    ) {
-      updateCurrentMedicine(batchId, currentMedicine);
-    }
-  }, [currentMedicine, batchId, updateCurrentMedicine]);
+  // useEffect(() => {
+  //   if (
+  //     batchId &&
+  //     (currentMedicine.medicineId ||
+  //       currentMedicine.medicineName ||
+  //       currentMedicine.quantity ||
+  //       currentMedicine.price ||
+  //       currentMedicine.expiryDate)
+  //   ) {
+  //     updateCurrentMedicine(batchId, currentMedicine);
+  //   }
+  // }, [currentMedicine, batchId, updateCurrentMedicine]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
