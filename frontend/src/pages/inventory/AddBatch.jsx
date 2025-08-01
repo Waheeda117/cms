@@ -28,15 +28,32 @@ import {
 } from "../../constants/selectOptions";
 import { addToStock } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
+import { useAddBatchStore } from "../../store/addBatchStore";
 import Modal from "../../components/UI/Modal";
 
 const AddBatch = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { batchDetails, attachments = [] } = location.state || {};
+  const { batchDetails: routeBatchDetails, attachments = [] } =
+    location.state || {};
 
   const { user } = useAuthStore();
+
+  const {
+    medicines,
+    miscellaneousAmount,
+    currentMedicine,
+    addMedicine,
+    removeMedicine,
+    updateMedicine,
+    setMiscellaneousAmount,
+    setCurrentMedicine,
+    updateCurrentMedicineField,
+    resetCurrentMedicine,
+    clearBatchData,
+    initializeBatch,
+  } = useAddBatchStore();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -50,23 +67,36 @@ const AddBatch = () => {
     expiryDate: "",
   });
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  
+
   const dropdownRef = useRef(null);
 
-  const [medicines, setMedicines] = useState([]);
-  const [miscellaneousAmount, setMiscellaneousAmount] = useState(0);
-  const [currentMedicine, setCurrentMedicine] = useState({
-    medicineName: "",
-    quantity: "",
-    price: "",
-    expiryDate: "",
-  });
+  // const [medicines, setMedicines] = useState([]);
+  // const [miscellaneousAmount, setMiscellaneousAmount] = useState(0);
+  // const [currentMedicine, setCurrentMedicine] = useState({
+  //   medicineName: "",
+  //   quantity: "",
+  //   price: "",
+  //   expiryDate: "",
+  // });
 
   useEffect(() => {
-    if (!batchDetails) {
+    if (routeBatchDetails) {
+      initializeBatch(routeBatchDetails);
+    } else {
       navigate("/inventory-management");
     }
-  }, [batchDetails, navigate]);
+  }, [routeBatchDetails, navigate, initializeBatch]);
+
+  const batchDetails = routeBatchDetails;
+
+  useEffect(() => {
+    if (
+      currentMedicine.medicineName &&
+      currentMedicine.medicineName !== searchTerm
+    ) {
+      setSearchTerm("");
+    }
+  }, [currentMedicine.medicineName]);
 
   // Set default expiry date (2 years from now) when component mounts
   useEffect(() => {
@@ -96,7 +126,6 @@ const AddBatch = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMedicineDropdown]);
-
 
   // Determine redirect path based on user role
   const redirectPath =
@@ -150,41 +179,41 @@ const AddBatch = () => {
     );
   }, [totalWithMiscellaneous, batchDetails]);
 
-
-
   const isPriceExceeded =
     totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0);
+
   // Update miscellaneous amount when remaining amount changes
   useEffect(() => {
     if (currentMedicine.medicineName === "MISCELLANEOUS") {
-      setCurrentMedicine((prev) => ({
-        ...prev,
-        price: remainingAmount.toFixed(2),
-      }));
+      updateCurrentMedicineField("price", remainingAmount.toFixed(2));
     }
-  }, [remainingAmount, currentMedicine.medicineName]);
+  }, [
+    remainingAmount,
+    currentMedicine.medicineName,
+    updateCurrentMedicineField,
+  ]);
 
-
-    const hasPriceMismatch = priceDifference > 0.001;
-  const canAddBatch =
-    !hasPriceMismatch && medicines.length > 0;
-
+  const hasPriceMismatch = priceDifference > 0.001;
+  const canAddBatch = !hasPriceMismatch && medicines.length > 0;
 
   const handleMedicineInputChange = (e) => {
     const { name, value } = e.target;
-    setCurrentMedicine((prev) => ({ ...prev, [name]: value }));
+    updateCurrentMedicineField(name, value);
     if (error) setError("");
   };
 
   const handleMedicineSelect = (medicine) => {
-    setCurrentMedicine((prev) => ({
-      ...prev,
+    const updatedMedicine = {
+      ...currentMedicine,
       medicineId: medicine.id,
       medicineName: medicine.name,
-      quantity: medicine.id === 1 ? "" : prev.quantity,
-      price: medicine.id === 1 ? remainingAmount.toFixed(2) : prev.price,
-      expiryDate: medicine.id === 1 ? "" : prev.expiryDate,
-    }));
+      quantity: medicine.id === 1 ? "" : currentMedicine.quantity,
+      price:
+        medicine.id === 1 ? remainingAmount.toFixed(2) : currentMedicine.price,
+      expiryDate: medicine.id === 1 ? "" : currentMedicine.expiryDate,
+    };
+
+    setCurrentMedicine(updatedMedicine);
     setShowMedicineDropdown(false);
     setSearchTerm("");
   };
@@ -223,29 +252,16 @@ const AddBatch = () => {
         return;
       }
 
-      setMedicines((prev) => [
-        ...prev,
-        {
-          ...currentMedicine,
-          quantity: parseInt(currentMedicine.quantity),
-          price: parseFloat(currentMedicine.price),
-          expiryDate: currentMedicine.expiryDate,
-        },
-      ]);
+      addMedicine({
+        ...currentMedicine,
+        quantity: parseInt(currentMedicine.quantity),
+        price: parseFloat(currentMedicine.price),
+        expiryDate: currentMedicine.expiryDate,
+      });
     }
 
-    // Reset form with default expiry date
-    const defaultExpiryDate = new Date();
-    defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 2);
-    const defaultExpiryString = defaultExpiryDate.toISOString().split("T")[0];
-
-    setCurrentMedicine({
-      medicineId: null,
-      medicineName: "",
-      quantity: "",
-      price: "",
-      expiryDate: "",
-    });
+    // Reset form
+    resetCurrentMedicine();
     setError("");
   };
 
@@ -258,7 +274,7 @@ const AddBatch = () => {
       if (isEdit) {
         setEditValues((prev) => ({ ...prev, [fieldName]: value }));
       } else {
-        setCurrentMedicine((prev) => ({ ...prev, [fieldName]: value }));
+        updateCurrentMedicineField(fieldName, value);
       }
       return;
     }
@@ -292,18 +308,18 @@ const AddBatch = () => {
     if (isEdit) {
       setEditValues((prev) => ({ ...prev, [fieldName]: value }));
     } else {
-      setCurrentMedicine((prev) => ({ ...prev, [fieldName]: value }));
+      updateCurrentMedicineField(fieldName, value);
     }
   };
 
-  const removeMedicine = (index) => {
-    setMedicines((prev) => prev.filter((_, i) => i !== index));
-    // Cancel editing if the medicine being edited is deleted
-    if (editingIndex === index) {
-      setEditingIndex(null);
-      setEditValues({ price: "", quantity: "", expiryDate: "" });
-    }
-  };
+  // const removeMedicine = (index) => {
+  //   setMedicines((prev) => prev.filter((_, i) => i !== index));
+  //   // Cancel editing if the medicine being edited is deleted
+  //   if (editingIndex === index) {
+  //     setEditingIndex(null);
+  //     setEditValues({ price: "", quantity: "", expiryDate: "" });
+  //   }
+  // };
 
   const removeMiscellaneous = () => {
     setMiscellaneousAmount(0);
@@ -359,19 +375,12 @@ const AddBatch = () => {
       return;
     }
 
-    // Update the medicine
-    setMedicines((prev) =>
-      prev.map((medicine, i) =>
-        i === index
-          ? {
-              ...medicine,
-              price: newPrice,
-              quantity: newQuantity,
-              expiryDate: newExpiryDate,
-            }
-          : medicine
-      )
-    );
+    // Update the medicine using store
+    updateMedicine(index, {
+      price: newPrice,
+      quantity: newQuantity,
+      expiryDate: newExpiryDate,
+    });
 
     // Reset edit state
     setEditingIndex(null);
@@ -426,6 +435,9 @@ const AddBatch = () => {
       const response = await addToStock(payload);
       setSuccess("Batch added successfully!");
 
+      // Clear the stored data after successful submission
+      clearBatchData();
+
       setTimeout(() => {
         navigate(redirectPath);
       }, 1500);
@@ -444,8 +456,8 @@ const AddBatch = () => {
     setIsCancelModalOpen(true);
   };
 
-  // Handle cancel redirect
   const handleCancelRedirect = () => {
+    clearBatchData();
     navigate(redirectPath);
   };
 
@@ -551,10 +563,7 @@ const AddBatch = () => {
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
                     setShowMedicineDropdown(true);
-                    setCurrentMedicine((prev) => ({
-                      ...prev,
-                      medicineName: e.target.value,
-                    }));
+                    updateCurrentMedicineField("medicineName", e.target.value);
                   }}
                   onFocus={() => setShowMedicineDropdown(true)}
                   onBlur={(e) => {

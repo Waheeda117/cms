@@ -28,6 +28,7 @@ import {
 } from "../../constants/selectOptions";
 import { getBatchById, updateBatchById } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
+import { useBatchUpdateStore } from "../../store/batchUpdateStore";
 import Modal from "../../components/UI/Modal";
 
 const UpdateBatch = () => {
@@ -37,6 +38,17 @@ const UpdateBatch = () => {
   const dropdownRef = useRef(null);
 
   const { user } = useAuthStore();
+
+  // Zustand store for persistence
+  const {
+    setBatchData,
+    getBatchData,
+    updateMedicines,
+    updateMiscellaneousAmount,
+    updateCurrentMedicine,
+    clearBatchData,
+    cleanupOldData,
+  } = useBatchUpdateStore();
 
   const [loading, setLoading] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
@@ -48,24 +60,32 @@ const UpdateBatch = () => {
 
   // Edit mode state - Updated to include expiry date
   const [editingIndex, setEditingIndex] = useState(null);
-  const [editValues, setEditValues] = useState({ price: "", quantity: "", expiryDate: "" });
+  const [editValues, setEditValues] = useState({
+    price: "",
+    quantity: "",
+    expiryDate: "",
+  });
 
   const [batchDetails, setBatchDetails] = useState({
     batchNumber: "",
     billID: "",
     overallPrice: "",
   });
-  const [medicines, setMedicines] = useState([]);
-  const [miscellaneousAmount, setMiscellaneousAmount] = useState(0);
 
-  // Updated currentMedicine state to include expiryDate
-  const [currentMedicine, setCurrentMedicine] = useState({
-    medicineId: null,
-    medicineName: "",
-    quantity: "",
-    price: "",
-    expiryDate: "", // Added expiry date field
-  });
+  const persistentData = getBatchData(batchId);
+  const [medicines, setMedicines] = useState(persistentData?.medicines || []);
+  const [miscellaneousAmount, setMiscellaneousAmount] = useState(
+    persistentData?.miscellaneousAmount || 0
+  );
+  const [currentMedicine, setCurrentMedicine] = useState(
+    persistentData?.currentMedicine || {
+      medicineId: null,
+      medicineName: "",
+      quantity: "",
+      price: "",
+      expiryDate: "",
+    }
+  );
 
   const redirectPath =
     user?.role === "admin"
@@ -80,6 +100,39 @@ const UpdateBatch = () => {
       : user?.role === "pharmacist_inventory"
       ? `/pharmacist_inventory/inventory-management/${batchId}`
       : "/inventory-management";
+
+  // Auto-cleanup old data on component mount
+  useEffect(() => {
+    cleanupOldData();
+  }, [cleanupOldData]);
+
+  // Update persistent storage whenever medicines change
+  useEffect(() => {
+    if (batchId && medicines.length >= 0) {
+      updateMedicines(batchId, medicines);
+    }
+  }, [medicines, batchId, updateMedicines]);
+
+  // Update persistent storage whenever miscellaneous amount changes
+  useEffect(() => {
+    if (batchId) {
+      updateMiscellaneousAmount(batchId, miscellaneousAmount);
+    }
+  }, [miscellaneousAmount, batchId, updateMiscellaneousAmount]);
+
+  // Update persistent storage whenever current medicine form changes
+  useEffect(() => {
+    if (
+      batchId &&
+      (currentMedicine.medicineId ||
+        currentMedicine.medicineName ||
+        currentMedicine.quantity ||
+        currentMedicine.price ||
+        currentMedicine.expiryDate)
+    ) {
+      updateCurrentMedicine(batchId, currentMedicine);
+    }
+  }, [currentMedicine, batchId, updateCurrentMedicine]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -106,21 +159,37 @@ const UpdateBatch = () => {
           overallPrice: batch.data.overallPrice,
         });
 
-        const existingMedicines = Array.isArray(batch.data.medicines)
-          ? batch.data.medicines.map((medicine) => {
-              if (!medicine.medicineId) {
-                const foundMedicine = getMedicineByName(medicine.medicineName);
-                return {
-                  ...medicine,
-                  medicineId: foundMedicine ? foundMedicine.id : null,
-                };
-              }
-              return medicine;
-            })
-          : [];
+        // Only load from API if no persistent data exists
+        const persistentBatchData = getBatchData(batchId);
+        if (
+          !persistentBatchData ||
+          !persistentBatchData.medicines ||
+          persistentBatchData.medicines.length === 0
+        ) {
+          const existingMedicines = Array.isArray(batch.data.medicines)
+            ? batch.data.medicines.map((medicine) => {
+                if (!medicine.medicineId) {
+                  const foundMedicine = getMedicineByName(
+                    medicine.medicineName
+                  );
+                  return {
+                    ...medicine,
+                    medicineId: foundMedicine ? foundMedicine.id : null,
+                  };
+                }
+                return medicine;
+              })
+            : [];
 
-        setMedicines(existingMedicines);
-        setMiscellaneousAmount(batch.data.miscellaneousAmount || 0);
+          setMedicines(existingMedicines);
+          setMiscellaneousAmount(batch.data.miscellaneousAmount || 0);
+
+          // Store initial data in persistent storage
+          setBatchData(batchId, {
+            medicines: existingMedicines,
+            miscellaneousAmount: batch.data.miscellaneousAmount || 0,
+          });
+        }
       } catch (error) {
         setError("Failed to fetch batch data. Please try again.");
         setMedicines([]);
@@ -130,24 +199,27 @@ const UpdateBatch = () => {
     };
 
     fetchBatchData();
-  }, [batchId]);
+  }, [batchId, getBatchData, setBatchData]);
 
   // Updated validation to include expiry date for non-miscellaneous items
   const isMedicineFormValid = useMemo(() => {
     if (currentMedicine.medicineId === 1) {
       return true;
     }
-    
-    const priceValid = currentMedicine.price && 
-                      parseFloat(currentMedicine.price) > 0 && 
-                      currentMedicine.price.toString().replace('.', '').length <= 9;
-    
-    const quantityValid = currentMedicine.quantity && 
-                         parseInt(currentMedicine.quantity) > 0 && 
-                         currentMedicine.quantity.toString().length <= 5;
 
-    const expiryDateValid = currentMedicine.expiryDate && 
-                           new Date(currentMedicine.expiryDate) > new Date();
+    const priceValid =
+      currentMedicine.price &&
+      parseFloat(currentMedicine.price) > 0 &&
+      currentMedicine.price.toString().replace(".", "").length <= 9;
+
+    const quantityValid =
+      currentMedicine.quantity &&
+      parseInt(currentMedicine.quantity) > 0 &&
+      currentMedicine.quantity.toString().length <= 5;
+
+    const expiryDateValid =
+      currentMedicine.expiryDate &&
+      new Date(currentMedicine.expiryDate) > new Date();
 
     return (
       currentMedicine.medicineId &&
@@ -215,20 +287,20 @@ const UpdateBatch = () => {
 
   const handleMedicineInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     let processedValue = value;
-    if (name === 'price' && value) {
-      const digitsOnly = value.replace('.', '');
+    if (name === "price" && value) {
+      const digitsOnly = value.replace(".", "");
       if (digitsOnly.length > 9) {
         return;
       }
     }
-    if (name === 'quantity' && value) {
+    if (name === "quantity" && value) {
       if (value.length > 5) {
         return;
       }
     }
-    
+
     setCurrentMedicine((prev) => ({ ...prev, [name]: processedValue }));
     if (error) setError("");
   };
@@ -237,7 +309,9 @@ const UpdateBatch = () => {
     // Set default expiry date to 2 years from now when medicine is selected
     const defaultExpiryDate = new Date();
     defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 2);
-    const defaultExpiryDateString = defaultExpiryDate.toISOString().split("T")[0];
+    const defaultExpiryDateString = defaultExpiryDate
+      .toISOString()
+      .split("T")[0];
 
     setCurrentMedicine((prev) => ({
       ...prev,
@@ -259,10 +333,12 @@ const UpdateBatch = () => {
 
   const checkEditPriceExceeded = (index, newPrice, newQuantity) => {
     const medicine = medicines[index];
-    const currentMedicineTotal = parseFloat(medicine.price) * parseInt(medicine.quantity);
+    const currentMedicineTotal =
+      parseFloat(medicine.price) * parseInt(medicine.quantity);
     const newMedicineTotal = parseFloat(newPrice) * parseInt(newQuantity);
-    
-    const newTotal = totalWithMiscellaneous - currentMedicineTotal + newMedicineTotal;
+
+    const newTotal =
+      totalWithMiscellaneous - currentMedicineTotal + newMedicineTotal;
     return newTotal > parseFloat(batchDetails.overallPrice);
   };
 
@@ -285,8 +361,10 @@ const UpdateBatch = () => {
       }
     }
 
-    if (currentMedicine.medicineId !== 1 && 
-        checkPriceExceeded(currentMedicine.price, currentMedicine.quantity)) {
+    if (
+      currentMedicine.medicineId !== 1 &&
+      checkPriceExceeded(currentMedicine.price, currentMedicine.quantity)
+    ) {
       setError("Adding this medicine would exceed the total batch price");
       return;
     }
@@ -328,26 +406,26 @@ const UpdateBatch = () => {
     setMiscellaneousAmount(0);
   };
 
-const startEdit = (index, medicine) => {
-  setEditingIndex(index);
-  
-  // Format the expiry date for the date input field
-  let formattedExpiryDate = "";
-  if (medicine.expiryDate) {
-    // If the date is already in YYYY-MM-DD format, use it directly
-    // Otherwise, convert it to the correct format
-    const date = new Date(medicine.expiryDate);
-    if (!isNaN(date.getTime())) {
-      formattedExpiryDate = date.toISOString().split('T')[0];
+  const startEdit = (index, medicine) => {
+    setEditingIndex(index);
+
+    // Format the expiry date for the date input field
+    let formattedExpiryDate = "";
+    if (medicine.expiryDate) {
+      // If the date is already in YYYY-MM-DD format, use it directly
+      // Otherwise, convert it to the correct format
+      const date = new Date(medicine.expiryDate);
+      if (!isNaN(date.getTime())) {
+        formattedExpiryDate = date.toISOString().split("T")[0];
+      }
     }
-  }
-  
-  setEditValues({
-    price: medicine.price.toString(),
-    quantity: medicine.quantity.toString(),
-    expiryDate: formattedExpiryDate, // Use formatted date
-  });
-};
+
+    setEditValues({
+      price: medicine.price.toString(),
+      quantity: medicine.quantity.toString(),
+      expiryDate: formattedExpiryDate, // Use formatted date
+    });
+  };
 
   const cancelEdit = () => {
     setEditingIndex(null);
@@ -355,19 +433,23 @@ const startEdit = (index, medicine) => {
   };
 
   const saveEdit = (index) => {
-    const priceValid = editValues.price && 
-                      parseFloat(editValues.price) > 0 && 
-                      editValues.price.replace('.', '').length <= 9;
-    
-    const quantityValid = editValues.quantity && 
-                         parseInt(editValues.quantity) > 0 && 
-                         editValues.quantity.length <= 5;
+    const priceValid =
+      editValues.price &&
+      parseFloat(editValues.price) > 0 &&
+      editValues.price.replace(".", "").length <= 9;
 
-    const expiryDateValid = editValues.expiryDate && 
-                           new Date(editValues.expiryDate) > new Date();
+    const quantityValid =
+      editValues.quantity &&
+      parseInt(editValues.quantity) > 0 &&
+      editValues.quantity.length <= 5;
+
+    const expiryDateValid =
+      editValues.expiryDate && new Date(editValues.expiryDate) > new Date();
 
     if (!priceValid || !quantityValid || !expiryDateValid) {
-      setError("Please enter valid price (max 9 digits), quantity (max 5 digits), and future expiry date");
+      setError(
+        "Please enter valid price (max 9 digits), quantity (max 5 digits), and future expiry date"
+      );
       return;
     }
 
@@ -395,15 +477,15 @@ const startEdit = (index, medicine) => {
 
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
-    
-    if (name === 'price' && value) {
-      const digitsOnly = value.replace('.', '');
+
+    if (name === "price" && value) {
+      const digitsOnly = value.replace(".", "");
       if (digitsOnly.length > 9) return;
     }
-    if (name === 'quantity' && value) {
+    if (name === "quantity" && value) {
       if (value.length > 5) return;
     }
-    
+
     setEditValues((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -417,7 +499,9 @@ const startEdit = (index, medicine) => {
 
     if (hasPriceMismatch) {
       if (isPriceExceeded) {
-        setError("Total medicine price has exceeded against this Cheque Number");
+        setError(
+          "Total medicine price has exceeded against this Cheque Number"
+        );
       }
       return;
     }
@@ -446,6 +530,9 @@ const startEdit = (index, medicine) => {
       await updateBatchById(batchId, payload);
       setSuccess("Batch updated successfully!");
 
+      // Clear persistent data after successful submit
+      clearBatchData(batchId);
+
       setTimeout(() => {
         navigate(redirectPath);
       }, 1500);
@@ -464,6 +551,7 @@ const startEdit = (index, medicine) => {
   };
 
   const proceedCancel = () => {
+    clearBatchData(batchId);
     navigate(redirectPath);
   };
 
@@ -737,7 +825,7 @@ const startEdit = (index, medicine) => {
                         name="expiryDate"
                         value={currentMedicine.expiryDate}
                         onChange={handleMedicineInputChange}
-                        min={new Date().toISOString().split('T')[0]} // Minimum date is today
+                        min={new Date().toISOString().split("T")[0]} // Minimum date is today
                         className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
                       />
                     </div>
@@ -820,8 +908,10 @@ const startEdit = (index, medicine) => {
                             </div>
                           </div>
                         </td>
-                        
-                        <td className={`px-4 py-3 text-center ${theme.textPrimary}`}>
+
+                        <td
+                          className={`px-4 py-3 text-center ${theme.textPrimary}`}
+                        >
                           {editingIndex === index ? (
                             <input
                               type="number"
@@ -835,8 +925,10 @@ const startEdit = (index, medicine) => {
                             medicine.quantity
                           )}
                         </td>
-                        
-                        <td className={`px-4 py-3 text-center ${theme.textPrimary}`}>
+
+                        <td
+                          className={`px-4 py-3 text-center ${theme.textPrimary}`}
+                        >
                           {editingIndex === index ? (
                             <input
                               type="number"
@@ -853,32 +945,41 @@ const startEdit = (index, medicine) => {
                         </td>
 
                         {/* Expiry Date Column */}
-                        <td className={`px-4 py-3 text-center ${theme.textPrimary}`}>
+                        <td
+                          className={`px-4 py-3 text-center ${theme.textPrimary}`}
+                        >
                           {editingIndex === index ? (
                             <input
                               type="date"
                               name="expiryDate"
                               value={editValues.expiryDate}
                               onChange={handleEditInputChange}
-                              min={new Date().toISOString().split('T')[0]}
+                              min={new Date().toISOString().split("T")[0]}
                               className={`w-32 px-2 py-1 text-center ${theme.input} rounded border ${theme.borderSecondary}`}
                             />
+                          ) : medicine.expiryDate ? (
+                            new Date(medicine.expiryDate).toLocaleDateString()
                           ) : (
-                            medicine.expiryDate ? new Date(medicine.expiryDate).toLocaleDateString() : 'N/A'
+                            "N/A"
                           )}
                         </td>
-                        
+
                         <td
                           className={`px-4 py-3 text-center ${theme.textPrimary} font-medium`}
                         >
-                          {editingIndex === index ? (
-                            `PKR ${(parseFloat(editValues.quantity || 0) * parseFloat(editValues.price || 0)).toFixed(2)}`
-                          ) : (
-                            `PKR ${(medicine.quantity * medicine.price).toFixed(2)}`
-                          )}
+                          {editingIndex === index
+                            ? `PKR ${(
+                                parseFloat(editValues.quantity || 0) *
+                                parseFloat(editValues.price || 0)
+                              ).toFixed(2)}`
+                            : `PKR ${(
+                                medicine.quantity * medicine.price
+                              ).toFixed(2)}`}
                         </td>
-                        
-                        <td className={`px-4 py-3 text-center ${theme.textPrimary}`}>
+
+                        <td
+                          className={`px-4 py-3 text-center ${theme.textPrimary}`}
+                        >
                           <div className="flex justify-center space-x-2">
                             {editingIndex === index ? (
                               <>
@@ -1057,10 +1158,12 @@ const startEdit = (index, medicine) => {
             >
               Cancel
             </button>
-            
+
             <button
               type="submit"
-              disabled={updateLoading || !canUpdateBatch || editingIndex !== null}
+              disabled={
+                updateLoading || !canUpdateBatch || editingIndex !== null
+              }
               className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {updateLoading ? (
