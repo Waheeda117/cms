@@ -53,17 +53,17 @@ export const useBatchUpdateStore = create(
         })),
 
       // Update current medicine form for a specific batch
-      updateCurrentMedicine: (batchId, currentMedicine) =>
-        set((state) => ({
-          batchData: {
-            ...state.batchData,
-            [batchId]: {
-              ...state.batchData[batchId],
-              currentMedicine,
-              lastUpdated: Date.now(),
-            },
-          },
-        })),
+updateCurrentMedicine: (batchId, currentMedicine) =>
+  set((state) => ({
+    batchData: {
+      ...state.batchData,
+      [batchId]: {
+        ...state.batchData[batchId],
+        currentMedicine,
+        lastUpdated: Date.now(),
+      },
+    },
+  })),
 
       // Clear data for a specific batch (after successful submit or explicit clear)
       clearBatchData: (batchId) =>

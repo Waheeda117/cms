@@ -7,13 +7,7 @@ export const useAddBatchStore = create(
       // Form data state
       medicines: [],
       miscellaneousAmount: 0,
-      currentMedicine: {
-        medicineId: null,
-        medicineName: "",
-        quantity: "",
-        price: "",
-        expiryDate: "",
-      },
+      // Remove currentMedicine from persisted state - it will be local only
       
       // Batch details (to ensure we're working with the same batch)
       batchDetails: null,
@@ -44,29 +38,6 @@ export const useAddBatchStore = create(
         set({ miscellaneousAmount: amount });
       },
       
-      // Actions for current medicine form
-      setCurrentMedicine: (medicine) => {
-        set({ currentMedicine: medicine });
-      },
-      
-      updateCurrentMedicineField: (field, value) => {
-        set((state) => ({
-          currentMedicine: { ...state.currentMedicine, [field]: value }
-        }));
-      },
-      
-      resetCurrentMedicine: () => {
-        set({
-          currentMedicine: {
-            medicineId: null,
-            medicineName: "",
-            quantity: "",
-            price: "",
-            expiryDate: "",
-          }
-        });
-      },
-      
       // Batch details actions
       setBatchDetails: (details) => {
         set({ batchDetails: details });
@@ -87,13 +58,6 @@ export const useAddBatchStore = create(
         set({
           medicines: [],
           miscellaneousAmount: 0,
-          currentMedicine: {
-            medicineId: null,
-            medicineName: "",
-            quantity: "",
-            price: "",
-            expiryDate: "",
-          },
           batchDetails: null,
         });
       },
@@ -111,11 +75,11 @@ export const useAddBatchStore = create(
     }),
     {
       name: "add-batch-storage",
-      // Only persist the data we need
+      // Only persist medicines, miscellaneousAmount, and batchDetails
+      // Remove currentMedicine from persistence
       partialize: (state) => ({
         medicines: state.medicines,
         miscellaneousAmount: state.miscellaneousAmount,
-        currentMedicine: state.currentMedicine,
         batchDetails: state.batchDetails,
       }),
     }
