@@ -1179,7 +1179,7 @@ const AddBatch = () => {
             <button
               type="button"
               onClick={handleCancelConfirmation}
-              className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200`}
+              className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} ${theme.textSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200`}
             >
               <span>Cancel</span>
             </button>
@@ -1239,7 +1239,7 @@ const AddBatch = () => {
           <div className="flex justify-end space-x-3">
             <button
               onClick={() => setIsCancelModalOpen(false)}
-              className={`px-4 py-2 rounded-lg ${theme.cardSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors`}
+              className={`px-4 py-2 rounded-lg ${theme.cardSecondary} ${theme.textSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors`}
             >
               Go Back
             </button>

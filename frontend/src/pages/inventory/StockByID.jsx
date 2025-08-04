@@ -483,7 +483,7 @@ const StockById = () => {
                   return (
                     <tr
                       key={item._id}
-                      className={`${theme.borderSecondary} border-b hover:bg-opacity-50 ${theme.cardSecondary} transition-colors`}
+                      className={`${theme.borderSecondary} border-b ${theme.textSecondary} hover:bg-opacity-50 ${theme.cardSecondary} transition-colors`}
                     >
                       <td className="px-4 py-4 min-w-[120px]">
                         <div className="font-medium text-sm sm:text-base">

@@ -26,7 +26,7 @@ import {
   getMedicineById,
   getMedicineByName,
 } from "../../constants/selectOptions";
-import { getBatchById, updateBatchById, finalizeBatch  } from "../../api/api";
+import { getBatchById, updateBatchById, finalizeBatch } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
 import { useBatchUpdateStore } from "../../store/batchUpdateStore";
 import Modal from "../../components/UI/Modal";
@@ -58,7 +58,7 @@ const UpdateBatch = () => {
   const [showMedicineDropdown, setShowMedicineDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
-    const [finalizeLoading, setFinalizeLoading] = useState(false); // New loading state for finalize
+  const [finalizeLoading, setFinalizeLoading] = useState(false); // New loading state for finalize
   const [batchIsDraft, setBatchIsDraft] = useState(false); // Track draft status
 
   // Edit mode state - Updated to include expiry date
@@ -503,8 +503,7 @@ const UpdateBatch = () => {
     setError("");
   };
 
-
-    const handleFinalize = async () => {
+  const handleFinalize = async () => {
     setFinalizeLoading(true);
     setError("");
     setSuccess("");
@@ -521,8 +520,6 @@ const UpdateBatch = () => {
       setTimeout(() => {
         navigate(redirectPath);
       }, 1500);
-
-
     } catch (error) {
       setError(
         error.response?.data?.message ||
@@ -1236,29 +1233,31 @@ const UpdateBatch = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200`}
+              className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} ${theme.textSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200`}
             >
               Cancel
             </button>
 
-                    {/*Finalize Button (only for drafts) */}
-        {batchIsDraft && (
-          <button
-            type="button"
-            onClick={handleFinalize}
-            disabled={finalizeLoading || !canUpdateBatch || editingIndex !== null}
-            className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {finalizeLoading ? (
-              <>
-                <Loader className="w-5 h-5 animate-spin" />
-                <span>Finalizing...</span>
-              </>
-            ) : (
-              <span>Finalize Batch</span>
+            {/*Finalize Button (only for drafts) */}
+            {batchIsDraft && (
+              <button
+                type="button"
+                onClick={handleFinalize}
+                disabled={
+                  finalizeLoading || !canUpdateBatch || editingIndex !== null
+                }
+                className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {finalizeLoading ? (
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" />
+                    <span>Finalizing...</span>
+                  </>
+                ) : (
+                  <span>Finalize Batch</span>
+                )}
+              </button>
             )}
-          </button>
-        )}
 
             <button
               type="submit"
@@ -1297,7 +1296,7 @@ const UpdateBatch = () => {
           <div className="flex justify-end space-x-3">
             <button
               onClick={() => setShowCancelModal(false)}
-              className={`px-4 py-2 ${theme.buttonSecondary} rounded-lg`}
+              className={`px-4 py-2 ${theme.textSecondary} rounded-lg`}
             >
               Cancel
             </button>
