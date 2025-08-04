@@ -14,6 +14,8 @@ import {
   Gauge,
   ArrowDownUp,
   Layers,
+  FileEdit,
+  Check
 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import { getStocksData, deleteStockById } from "../../api/api";
@@ -42,6 +44,8 @@ const Stocks = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [paginationData, setPaginationData] = useState(null);
+    const [activeTab, setActiveTab] = useState('all'); // New state for tabs
+
 
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
@@ -130,6 +134,14 @@ const Stocks = () => {
 
     let batches = [...allStockData.data.batches];
 
+
+        // Apply tab filter
+    if (activeTab === 'drafts') {
+      batches = batches.filter(batch => batch.isDraft);
+    } else if (activeTab === 'finalized') {
+      batches = batches.filter(batch => !batch.isDraft);
+    }
+
     // Apply search filter
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
@@ -173,7 +185,7 @@ const Stocks = () => {
     }
 
     return batches;
-  }, [allStockData, searchTerm, sortConfig]);
+  }, [allStockData, searchTerm, sortConfig, activeTab]);
 
   // Summary cards data
   const summaryCards = [
@@ -322,6 +334,43 @@ const Stocks = () => {
             </div>
           </div>
 
+                    {/* Tabs Filter */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'all'
+                    ? `bg-gradient-to-r ${theme.buttonGradient} text-white shadow-lg`
+                    : `${theme.cardOpacity} ${theme.border} border hover:${theme.cardSecondary}`
+                }`}
+              >
+                All Batches
+              </button>
+              <button
+                onClick={() => setActiveTab('drafts')}
+                className={`px-4 py-2 rounded-lg font-medium flex items-center transition-colors ${
+                  activeTab === 'drafts'
+                    ? `bg-gradient-to-r ${theme.buttonGradient} text-white shadow-lg`
+                    : `${theme.cardOpacity} ${theme.border} border hover:${theme.cardSecondary}`
+                }`}
+              >
+                {/* <FileEdit className="w-4 h-4 mr-1" /> */}
+                Drafts
+              </button>
+              <button
+                onClick={() => setActiveTab('finalized')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'finalized'
+                    ? `bg-gradient-to-r ${theme.buttonGradient} text-white shadow-lg`
+                    : `${theme.cardOpacity} ${theme.border} border hover:${theme.cardSecondary}`
+                }`}
+              >
+                Finalized
+              </button>
+            </div>
+          </div>
+
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
@@ -379,6 +428,14 @@ const Stocks = () => {
                       <ArrowDownUp className="w-3 h-3 ml-1" />
                     </div>
                   </th>
+                  
+
+                  <th
+                    className={`px-6 py-3 text-center text-xs font-medium ${theme.textMuted} tracking-wider w-1/6`}
+                  >
+                    Status
+                  </th>
+
                   <th
                     className={`px-6 py-3 text-center text-xs font-medium ${theme.textMuted} tracking-wider w-1/5`}
                   >
@@ -462,6 +519,24 @@ const Stocks = () => {
                         className={`px-6 py-4 text-center text-sm ${theme.textSecondary}`}
                       >
                         {formatDate(batch.updatedAt)}
+                      </td>
+
+                                            {/* Status Cell */}
+                      <td className="px-6 py-4 text-center">
+                        {batch.isDraft ? (
+                          <div className="flex items-center justify-center">
+                            <div className="flex items-center text-blue-500">
+                              {/* <FileEdit className="w-4 h-4 mr-1" /> */}
+                              <span className="text-xs font-medium">Draft</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center">
+                            <div className="flex items-center text-green-500">
+                              <span className="text-xs font-medium">Finalized</span>
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-6 py-4">

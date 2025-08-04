@@ -26,7 +26,7 @@ import {
   getMedicineById,
   getMedicineByName,
 } from "../../constants/selectOptions";
-import { getBatchById, updateBatchById } from "../../api/api";
+import { getBatchById, updateBatchById, finalizeBatch  } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
 import { useBatchUpdateStore } from "../../store/batchUpdateStore";
 import Modal from "../../components/UI/Modal";
@@ -58,6 +58,8 @@ const UpdateBatch = () => {
   const [showMedicineDropdown, setShowMedicineDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
+    const [finalizeLoading, setFinalizeLoading] = useState(false); // New loading state for finalize
+  const [batchIsDraft, setBatchIsDraft] = useState(false); // Track draft status
 
   // Edit mode state - Updated to include expiry date
   const [editingIndex, setEditingIndex] = useState(null);
@@ -180,7 +182,10 @@ const UpdateBatch = () => {
           batchNumber: batch.data.batchNumber,
           billID: batch.data.billID,
           overallPrice: batch.data.overallPrice,
+          isDraft: batch.data.isDraft,
         });
+
+        setBatchIsDraft(batch.data.isDraft);
 
         // Only load from API if no persistent data exists
         const persistentBatchData = getBatchData(batchId);
@@ -496,6 +501,36 @@ const UpdateBatch = () => {
     setEditingIndex(null);
     setEditValues({ price: "", quantity: "", expiryDate: "" });
     setError("");
+  };
+
+
+    const handleFinalize = async () => {
+    setFinalizeLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      await finalizeBatch(batchId);
+      setSuccess("Batch finalized successfully!");
+      setBatchIsDraft(false); // Update local state
+
+      // Optional: Refresh batch data
+      const updatedBatch = await getBatchById(batchId);
+      setBatchDetails(updatedBatch.data);
+
+      setTimeout(() => {
+        navigate(redirectPath);
+      }, 1500);
+
+
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+          "Failed to finalize batch. Please try again."
+      );
+    } finally {
+      setFinalizeLoading(false);
+    }
   };
 
   const handleEditInputChange = (e) => {
@@ -1205,6 +1240,25 @@ const UpdateBatch = () => {
             >
               Cancel
             </button>
+
+                    {/*Finalize Button (only for drafts) */}
+        {batchIsDraft && (
+          <button
+            type="button"
+            onClick={handleFinalize}
+            disabled={finalizeLoading || !canUpdateBatch || editingIndex !== null}
+            className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {finalizeLoading ? (
+              <>
+                <Loader className="w-5 h-5 animate-spin" />
+                <span>Finalizing...</span>
+              </>
+            ) : (
+              <span>Finalize Batch</span>
+            )}
+          </button>
+        )}
 
             <button
               type="submit"

@@ -67,6 +67,18 @@ const inventorySchema = new mongoose.Schema(
       type: [String], // Array of Cloudinary URLs
       default: [],
     },
+    isDraft: {
+      type: Boolean,
+      default: false,
+    },
+    draftNote: {
+      type: String,
+      default: '',
+    },
+    finalizedAt: {
+      type: Date,
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -82,5 +94,6 @@ inventorySchema.index({ billID: 1 });
 inventorySchema.index({ "medicines.medicineId": 1 });
 inventorySchema.index({ "medicines.medicineName": 1 });
 inventorySchema.index({ createdAt: -1 });
+inventorySchema.index({ isDraft: 1 }); // New index for draft filtering
 
 export const Inventory = mongoose.model("Inventory", inventorySchema);
