@@ -28,9 +28,9 @@ router.get("/stock/:medicineName", authorizeRoles("admin", "pharmacist_inventory
 
 
 // Routes that only admin can access
-router.delete("/batch/:id", authorizeRoles("admin"), deleteStockById);
+router.delete("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), deleteStockById);
 // Route for updating batch by ID (only admin can access)
-router.put("/batch/:id", authorizeRoles("admin"), updateBatchById);
+router.put("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), updateBatchById);
 
 
 

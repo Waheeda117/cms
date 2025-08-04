@@ -37,7 +37,32 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
 
   const handleBatchInputChange = (e) => {
     const { name, value } = e.target;
-    setBatchDetails((prev) => ({ ...prev, [name]: value }));
+    
+    // Special handling for billID (cheque number) - only allow numeric input
+    if (name === 'billID') {
+      // Remove any non-numeric characters
+      const numericValue = value.replace(/[^0-9]/g, '');
+      setBatchDetails((prev) => ({ ...prev, [name]: numericValue }));
+    } else {
+      setBatchDetails((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Handle key press for cheque number input - prevent non-numeric characters
+  const handleChequeNumberKeyPress = (e) => {
+    // Allow backspace, delete, tab, escape, enter, and arrow keys
+    if ([8, 9, 27, 13, 46, 37, 39, 38, 40].indexOf(e.keyCode) !== -1 ||
+        // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+        (e.keyCode === 65 && e.ctrlKey === true) ||
+        (e.keyCode === 67 && e.ctrlKey === true) ||
+        (e.keyCode === 86 && e.ctrlKey === true) ||
+        (e.keyCode === 88 && e.ctrlKey === true)) {
+      return;
+    }
+    // Ensure that it is a number and stop the keypress
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+      e.preventDefault();
+    }
   };
 
   const handleAttachmentChange = async (e) => {
@@ -106,8 +131,8 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add New Batch"
-      subtitle="Add new medicine batch to your inventory"
+      title="Batch Details"
+      // subtitle="Add new medicine batch to your inventory"
     >
       <div className="p-6 space-y-6">
         <div className="flex justify-center mb-6">
@@ -191,8 +216,11 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
                 name="billID"
                 value={batchDetails.billID}
                 onChange={handleBatchInputChange}
+                onKeyDown={handleChequeNumberKeyPress}
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                placeholder="Enter Cheque Number"
+                placeholder="Enter Cheque Number (numbers only)"
+                pattern="[0-9]*"
+                inputMode="numeric"
                 required
               />
             </div>
@@ -265,7 +293,7 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
               disabled={!isBatchValid}
               className={`px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              <span>Next: Add Medicines</span>
+              <span>Next: Add </span>
             </button>
           </div>
         </div>
