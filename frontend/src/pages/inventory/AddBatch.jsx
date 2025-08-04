@@ -30,6 +30,8 @@ import { addToStock } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
 import { useAddBatchStore } from "../../store/addBatchStore";
 import Modal from "../../components/UI/Modal";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const AddBatch = () => {
   const { theme } = useTheme();
@@ -87,6 +89,30 @@ const AddBatch = () => {
       price: "",
       expiryDate: "",
     });
+  };
+
+  // Helper functions for date formatting
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return "";
+    return dateString; // Keep ISO format for internal use
+  };
+
+  const parseDisplayDate = (displayDate) => {
+    if (!displayDate) return "";
+    const [day, month, year] = displayDate.split("/");
+    if (day && month && year) {
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+    return "";
   };
 
   useEffect(() => {
@@ -745,15 +771,25 @@ const AddBatch = () => {
                   </label>
                   <div className="relative">
                     <Calendar
-                      className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
+                      className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textSecondary}`}
                     />
-                    <input
-                      type="date"
-                      name="expiryDate"
-                      value={currentMedicine.expiryDate}
-                      onChange={handleMedicineInputChange}
-                      min={new Date().toISOString().split("T")[0]}
+                    <DatePicker
+                      selected={
+                        currentMedicine.expiryDate
+                          ? new Date(currentMedicine.expiryDate)
+                          : null
+                      }
+                      onChange={(date) => {
+                        const isoDate = date
+                          ? date.toISOString().split("T")[0]
+                          : "";
+                        updateCurrentMedicineField("expiryDate", isoDate);
+                      }}
+                      dateFormat="dd/MM/yyyy"
+                      minDate={new Date()}
+                      placeholderText="DD/MM/YYYY"
                       className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
+                      wrapperClassName="w-full"
                     />
                   </div>
                 </div>
@@ -888,16 +924,28 @@ const AddBatch = () => {
                           className={`px-4 py-3 text-center ${theme.textPrimary}`}
                         >
                           {editingIndex === index ? (
-                            <input
-                              type="date"
-                              name="expiryDate"
-                              value={editValues.expiryDate}
-                              onChange={handleEditInputChange}
-                              min={new Date().toISOString().split("T")[0]}
+                            <DatePicker
+                              selected={
+                                editValues.expiryDate
+                                  ? new Date(editValues.expiryDate)
+                                  : null
+                              }
+                              onChange={(date) => {
+                                const isoDate = date
+                                  ? date.toISOString().split("T")[0]
+                                  : "";
+                                setEditValues((prev) => ({
+                                  ...prev,
+                                  expiryDate: isoDate,
+                                }));
+                              }}
+                              placeholderText="DD/MM/YYYY"
+                              dateFormat="dd/MM/yyyy"
+                              minDate={new Date()}
                               className={`w-32 px-2 py-1 text-center ${theme.input} rounded ${theme.borderSecondary} border ${theme.focus} focus:ring-1`}
                             />
                           ) : (
-                            new Date(medicine.expiryDate).toLocaleDateString()
+                            formatDateForDisplay(medicine.expiryDate)
                           )}
                         </td>
                         <td
