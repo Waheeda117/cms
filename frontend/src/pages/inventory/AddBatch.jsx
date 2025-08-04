@@ -26,7 +26,7 @@ import {
   getMedicineById,
   getMedicineByName,
 } from "../../constants/selectOptions";
-import { addToStock } from "../../api/api";
+import { addToStock, addDraftBatch } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
 import { useAddBatchStore } from "../../store/addBatchStore";
 import Modal from "../../components/UI/Modal";
@@ -65,6 +65,7 @@ const AddBatch = () => {
     expiryDate: "",
   });
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [draftLoading, setDraftLoading] = useState(false);
 
   const dropdownRef = useRef(null);
 
@@ -504,6 +505,49 @@ const AddBatch = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+    const handleSaveDraft = async (e) => {
+    e.preventDefault();
+
+    setDraftLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const payload = {
+        batchNumber: batchDetails.batchNumber,
+        billID: batchDetails.billID,
+        overallPrice: parseFloat(batchDetails.overallPrice),
+        miscellaneousAmount: miscellaneousAmount,
+        attachments,
+        medicines: medicines.map((medicine) => ({
+          medicineId: medicine.medicineId,
+          medicineName: medicine.medicineName,
+          quantity: medicine.quantity,
+          price: medicine.price,
+          expiryDate: medicine.expiryDate,
+          dateOfPurchase: new Date().toISOString().split("T")[0],
+          reorderLevel: 20,
+        })),
+      };
+
+      const response = await addDraftBatch(payload);
+      setSuccess("Draft batch saved successfully!");
+
+      clearBatchData();
+
+      setTimeout(() => {
+        navigate(redirectPath);
+      }, 1500);
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+          "Failed to save draft. Please try again."
+      );
+    } finally {
+      setDraftLoading(false);
     }
   };
 
@@ -1139,6 +1183,25 @@ const AddBatch = () => {
             >
               <span>Cancel</span>
             </button>
+
+          {/* NEW: Save Draft Button */}
+        <button
+          type="button"
+          onClick={handleSaveDraft}
+          disabled={draftLoading || !canAddBatch || editingIndex !== null}
+          className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {draftLoading ? (
+            <>
+              <Loader className="w-5 h-5 animate-spin" />
+              <span>Saving Draft...</span>
+            </>
+          ) : (
+            <>
+              <span>Save Draft</span>
+            </>
+          )}
+        </button>
 
             {/* Add Batch Button */}
             <button

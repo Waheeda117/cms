@@ -31,6 +31,7 @@ import {
   Shield,
   Activity,
   Info,
+  FileEdit
 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import { useParams, useNavigate } from "react-router-dom";
@@ -278,6 +279,12 @@ const BatchByID = () => {
                 </span>
               </div>
               <div className="flex items-center space-x-2">
+                <FileEdit className={`w-4 h-4 ${theme.textMuted}`} />
+                <span className={theme.textMuted}>
+                  Status: {batchData.isDraft ? 'Draft' : 'Finalized'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
                 <Users className={`w-4 h-4 ${theme.textMuted}`} />
                 <span className={theme.textMuted}>
                   Created By: {batchData.createdBy.username}
@@ -298,7 +305,6 @@ const BatchByID = () => {
             </div>
           </div>
 
-          {isAdmin && (
             <div className="flex flex-wrap gap-2">
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -309,16 +315,7 @@ const BatchByID = () => {
                 <Edit className="w-4 h-4 text-blue-500" />
                 <span className={theme.textPrimary}>Edit Batch</span>
               </motion.button>
-              {/* <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`flex items-center space-x-2 px-4 py-2 ${theme.cardSecondary} hover:bg-opacity-70 transition-colors rounded-lg`}
-              >
-                <Trash2 className="w-4 h-4 text-red-500" />
-                <span className={theme.textPrimary}>Delete Batch</span>
-              </motion.button> */}
             </div>
-          )}
         </div>
       </motion.div>
 

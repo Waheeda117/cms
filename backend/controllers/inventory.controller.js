@@ -122,6 +122,175 @@ export const addToStock = async (req, res) => {
     }
 };
 
+// NEW: Add Draft Batch
+export const addDraftBatch = async (req, res) => {
+    try {
+        const {
+            batchNumber,
+            billID,
+            medicines,
+            overallPrice,
+            attachments = [],
+            miscellaneousAmount = 0,
+            draftNote = ''
+        } = req.body;
+
+        // Same validation as addToStock but save as draft
+        if (!batchNumber || !billID || !medicines || !Array.isArray(medicines) || medicines.length === 0 || !overallPrice) {
+            return res.status(400).json({
+                success: false,
+                message: "All fields are required. Medicines must be a non-empty array."
+            });
+        }
+
+        // Validate miscellaneous amount
+        if (miscellaneousAmount < 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Miscellaneous amount cannot be negative"
+            });
+        }
+
+        // Check for duplicate medicine IDs within the same batch
+        const medicineIds = medicines.map(med => med.medicineId).filter(id => id !== null);
+        const uniqueMedicineIds = [...new Set(medicineIds)];
+        
+        if (medicineIds.length !== uniqueMedicineIds.length) {
+            return res.status(400).json({
+                success: false,
+                message: "Duplicate medicines are not allowed in the same batch"
+            });
+        }
+
+        // Validate each medicine
+        for (const medicine of medicines) {
+            const { medicineId, medicineName, quantity, price, expiryDate, dateOfPurchase, reorderLevel } = medicine;
+            
+            if (!medicineId || !medicineName || !quantity || !price || !expiryDate || !dateOfPurchase || reorderLevel === undefined) {
+                return res.status(400).json({
+                    success: false,
+                    message: "All medicine fields are required"
+                });
+            }
+
+            if (quantity <= 0 || price <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Quantity and price must be greater than 0"
+                });
+            }
+
+            medicine.totalAmount = quantity * price;
+        }
+
+        // Validate price matching
+        const totalMedicinesPrice = medicines.reduce((sum, medicine) => sum + medicine.totalAmount, 0);
+        const totalWithMiscellaneous = totalMedicinesPrice + miscellaneousAmount;
+        const priceDifference = Math.abs(totalWithMiscellaneous - overallPrice);
+        
+        if (priceDifference > 0.01) {
+            return res.status(400).json({
+                success: false,
+                message: `Total medicines price plus miscellaneous amount must equal overall price`
+            });
+        }
+
+        // Check if batch already exists
+        const existingBatch = await Inventory.findOne({ batchNumber });
+        if (existingBatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Batch number already exists. Please use a different batch number."
+            });
+        }
+
+        // Create new DRAFT batch
+        const newDraftBatch = new Inventory({
+            batchNumber,
+            billID,
+            medicines,
+            overallPrice,
+            miscellaneousAmount,
+            attachments,
+            isDraft: true, // Mark as draft
+            draftNote,
+            createdBy: req.user.id
+        });
+
+        await newDraftBatch.save();
+
+        return res.status(201).json({
+            success: true,
+            message: `Draft batch created successfully with ${medicines.length} medicines. This batch will not affect stock levels until finalized.`,
+            data: newDraftBatch
+        });
+
+    } catch (error) {
+        console.error("Error in addDraftBatch:", error);
+        
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: "Batch number already exists"
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
+// NEW: Finalize Draft Batch
+export const finalizeDraftBatch = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Batch ID is required"
+            });
+        }
+
+        const batch = await Inventory.findById(id);
+        if (!batch) {
+            return res.status(404).json({
+                success: false,
+                message: "Batch not found"
+            });
+        }
+
+        if (!batch.isDraft) {
+            return res.status(400).json({
+                success: false,
+                message: "This batch is already finalized"
+            });
+        }
+
+        // Finalize the batch
+        batch.isDraft = false;
+        batch.finalizedAt = new Date();
+        await batch.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Draft batch finalized successfully. Stock levels have been updated.",
+            data: batch
+        });
+
+    } catch (error) {
+        console.error("Error in finalizeDraftBatch:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
 export const stockList = async (req, res) => {
     try {
         const {
@@ -129,13 +298,19 @@ export const stockList = async (req, res) => {
             limit = 50,
             search = "",
             sortBy = "createdAt",
-            sortOrder = "desc"
+            sortOrder = "desc",
+            includeDrafts = "true"
         } = req.query;
 
         // Build search query
         const searchQuery = {};
 
-        // Text search across batch number, bill ID, or medicine names
+        // Filter drafts based on parameter
+        if (includeDrafts === "false") {
+            searchQuery.isDraft = false;
+        }
+
+        // Text search
         if (search) {
             searchQuery.$or = [
                 { batchNumber: { $regex: search, $options: "i" } },
@@ -154,8 +329,8 @@ export const stockList = async (req, res) => {
         // Execute query with pagination
         const [batches, totalCount] = await Promise.all([
             Inventory.find(searchQuery)
-                .sort(sortObj)
-                .skip(skip)
+                .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
+                .skip((parseInt(page) - 1) * parseInt(limit))
                 .limit(parseInt(limit))
                 .populate('createdBy', 'name email')
                 .lean(),
@@ -177,6 +352,9 @@ export const stockList = async (req, res) => {
 
             return {
                 ...batch,
+                isDraft: batch.isDraft, // Include draft status
+                draftNote: batch.draftNote,
+                finalizedAt: batch.finalizedAt,
                 summary: {
                     totalMedicines,
                     totalQuantity,
@@ -184,7 +362,13 @@ export const stockList = async (req, res) => {
                     miscellaneousAmount: batch.miscellaneousAmount || 0,
                     lowStockMedicines,
                     expiredMedicines,
-                    batchStatus: lowStockMedicines > 0 ? "Has Low Stock" : expiredMedicines > 0 ? "Has Expired Items" : "Good"
+                    batchStatus: batch.isDraft 
+                        ? "Draft" 
+                        : lowStockMedicines > 0 
+                            ? "Has Low Stock" 
+                            : expiredMedicines > 0 
+                                ? "Has Expired Items" 
+                                : "Good"
                 }
             };
         });
@@ -203,6 +387,8 @@ export const stockList = async (req, res) => {
                 },
                 summary: {
                     totalBatches: totalCount,
+                    draftBatches: enrichedBatches.filter(batch => batch.isDraft).length,
+                    finalizedBatches: enrichedBatches.filter(batch => !batch.isDraft).length,
                     totalMedicines: enrichedBatches.reduce((sum, batch) => sum + batch.summary.totalMedicines, 0),
                     totalMiscellaneousAmount: enrichedBatches.reduce((sum, batch) => sum + batch.summary.miscellaneousAmount, 0),
                     batchesWithLowStock: enrichedBatches.filter(batch => batch.summary.lowStockMedicines > 0).length,
@@ -233,6 +419,9 @@ export const allStocksList = async (req, res) => {
 
         // Build aggregation pipeline to flatten medicines across all batches
         const pipeline = [];
+
+        // IMPORTANT: Only include finalized batches in stock calculations
+        pipeline.push({ $match: { isDraft: false } });
 
         // Unwind medicines array to treat each medicine as a separate document
         pipeline.push({ $unwind: "$medicines" });
@@ -735,6 +924,20 @@ export const updateBatchById = async (req, res) => {
             });
         }
 
+        // If updating a draft batch, allow all updates
+        // If updating a finalized batch, prevent certain changes if needed
+        if (!existingBatch.isDraft && updateData.isDraft === true) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot convert a finalized batch back to draft"
+            });
+        }
+
+        // If finalizing a draft (isDraft: false), set finalizedAt
+        if (existingBatch.isDraft && updateData.isDraft === false) {
+            updateData.finalizedAt = new Date();
+        }
+
         // If batchNumber is being updated, check for uniqueness
         if (updateData.batchNumber && updateData.batchNumber !== existingBatch.batchNumber) {
             const batchExists = await Inventory.findOne({ 
@@ -900,11 +1103,9 @@ export const updateBatchById = async (req, res) => {
         const updatedBatch = await Inventory.findByIdAndUpdate(
             id,
             updateData,
-            { 
-                new: true, // Return updated document
-                runValidators: true // Run schema validators
-            }
+            { new: true, runValidators: true }
         ).populate('createdBy', 'name email');
+
 
         // Prepare response with summary information
         const totalMedicines = updatedBatch.medicines.length;
@@ -915,7 +1116,7 @@ export const updateBatchById = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Batch updated successfully",
+            message: `${updatedBatch.isDraft ? 'Draft batch' : 'Batch'} updated successfully`,
             data: {
                 ...updatedBatch.toObject(),
                 summary: {
@@ -925,7 +1126,13 @@ export const updateBatchById = async (req, res) => {
                     miscellaneousAmount: updatedBatch.miscellaneousAmount || 0,
                     lowStockMedicines,
                     expiredMedicines,
-                    batchStatus: lowStockMedicines > 0 ? "Has Low Stock" : expiredMedicines > 0 ? "Has Expired Items" : "Good"
+                    batchStatus: updatedBatch.isDraft 
+                        ? "Draft" 
+                        : lowStockMedicines > 0 
+                            ? "Has Low Stock" 
+                            : expiredMedicines > 0 
+                                ? "Has Expired Items" 
+                                : "Good"
                 }
             }
         });

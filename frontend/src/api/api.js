@@ -241,3 +241,23 @@ export const uploadImage = async (file) => {
     throw error;
   }
 };
+
+export const addDraftBatch = async (draftData) => {
+  try {
+    const response = await axiosInstance.post('/inventory/add-draft-batch', draftData);
+    return response.data;
+  } catch (error) {
+    console.error('Error saving draft batch:', error);
+    throw error;
+  }
+};
+
+export const finalizeBatch = async (batchId) => {
+  try {
+    const response = await axiosInstance.put(`/inventory/finalize-batch/${batchId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error finalizing batch:', error);
+    throw error;
+  }
+};
