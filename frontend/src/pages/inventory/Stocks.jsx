@@ -342,7 +342,7 @@ const Stocks = () => {
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeTab === 'all'
                     ? `bg-gradient-to-r ${theme.buttonGradient} text-white shadow-lg`
-                    : `${theme.cardOpacity} ${theme.border} border hover:${theme.cardSecondary}`
+                    : `${theme.cardOpacity} ${theme.border} ${theme.textSecondary} border hover:${theme.cardSecondary}`
                 }`}
               >
                 All Batches
@@ -352,7 +352,7 @@ const Stocks = () => {
                 className={`px-4 py-2 rounded-lg font-medium flex items-center transition-colors ${
                   activeTab === 'drafts'
                     ? `bg-gradient-to-r ${theme.buttonGradient} text-white shadow-lg`
-                    : `${theme.cardOpacity} ${theme.border} border hover:${theme.cardSecondary}`
+                    : `${theme.cardOpacity} ${theme.border} ${theme.textSecondary} border hover:${theme.cardSecondary}`
                 }`}
               >
                 {/* <FileEdit className="w-4 h-4 mr-1" /> */}
@@ -363,7 +363,7 @@ const Stocks = () => {
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeTab === 'finalized'
                     ? `bg-gradient-to-r ${theme.buttonGradient} text-white shadow-lg`
-                    : `${theme.cardOpacity} ${theme.border} border hover:${theme.cardSecondary}`
+                    : `${theme.cardOpacity} ${theme.border} ${theme.textSecondary} border hover:${theme.cardSecondary}`
                 }`}
               >
                 Finalized
