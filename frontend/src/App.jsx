@@ -348,7 +348,7 @@ function App() {
             path="/update-batch/:batchId"
             element={
               <ProtectedRoute>
-                <RoleProtectedRoute allowedRoles={["admin"]}>
+                <RoleProtectedRoute allowedRoles={["admin", "pharmacist_inventory"]}>
                   <UpdateBatch />
                 </RoleProtectedRoute>
               </ProtectedRoute>

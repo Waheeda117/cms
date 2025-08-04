@@ -324,14 +324,16 @@ const Stocks = () => {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <thead>
                 <tr className={`${theme.borderSecondary} border-b`}>
                   <th
-                    className="px-6 py-3 text-left text-xs font-medium cursor-pointer"
+                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer w-1/5"
                     onClick={() => requestSort("batchNumber")}
                   >
-                    <div className={`flex items-center ${theme.textPrimary}`}>
+                    <div
+                      className={`flex items-center justify-center ${theme.textPrimary}`}
+                    >
                       <span className={`${theme.textMuted} tracking-wider`}>
                         Batch Number
                       </span>
@@ -339,7 +341,7 @@ const Stocks = () => {
                     </div>
                   </th>
                   <th
-                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer"
+                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer w-1/5"
                     onClick={() => requestSort("billID")}
                   >
                     <div
@@ -352,7 +354,7 @@ const Stocks = () => {
                     </div>
                   </th>
                   <th
-                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer"
+                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer w-1/5"
                     onClick={() => requestSort("overallPrice")}
                   >
                     <div
@@ -365,33 +367,20 @@ const Stocks = () => {
                     </div>
                   </th>
                   <th
-                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer"
-                    onClick={() => requestSort("createdAt")}
-                  >
-                    <div
-                      className={`flex items-center ${theme.textPrimary} justify-center`}
-                    >
-                      <span className={`${theme.textMuted} tracking-wider`}>
-                        Created At
-                      </span>
-                      <ArrowDownUp className="w-3 h-3 ml-1" />
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer"
+                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer w-1/5"
                     onClick={() => requestSort("updatedAt")}
                   >
                     <div
                       className={`flex items-center ${theme.textPrimary} justify-center`}
                     >
                       <span className={`${theme.textMuted} tracking-wider`}>
-                        Updated At
+                        Last Modified
                       </span>
                       <ArrowDownUp className="w-3 h-3 ml-1" />
                     </div>
                   </th>
                   <th
-                    className={`px-6 py-3 text-center text-xs font-medium ${theme.textMuted} tracking-wider`}
+                    className={`px-6 py-3 text-center text-xs font-medium ${theme.textMuted} tracking-wider w-1/5`}
                   >
                     Actions
                   </th>
@@ -464,11 +453,11 @@ const Stocks = () => {
                           )}
                         </div>
                       </td>
-                      <td
+                      {/* <td
                         className={`px-6 py-4 text-center text-sm ${theme.textSecondary}`}
                       >
                         {formatDate(batch.createdAt)}
-                      </td>
+                      </td> */}
                       <td
                         className={`px-6 py-4 text-center text-sm ${theme.textSecondary}`}
                       >
@@ -487,7 +476,6 @@ const Stocks = () => {
                           >
                             <Eye className="w-4 h-4 text-blue-500" />
                           </button>
-                          {isAdmin && (
                             <button
                               className={`p-1.5 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}
                               onClick={() =>
@@ -496,8 +484,6 @@ const Stocks = () => {
                             >
                               <Edit className="w-4 h-4 text-green-500" />
                             </button>
-                          )}
-                          {isAdmin && (
                             <button
                               title="Delete Batch"
                               onClick={() => handleDeleteClick(batch)}
@@ -505,7 +491,6 @@ const Stocks = () => {
                             >
                               <Trash2 className="w-4 h-4 text-red-500" />
                             </button>
-                          )}
                         </div>
                       </td>
                     </tr>
