@@ -13,7 +13,7 @@ import {
   Box,
   Gauge,
   ArrowDownUp,
-  Layers,
+  Folders,
   FileEdit,
   Check
 } from "lucide-react";
@@ -463,7 +463,7 @@ const Stocks = () => {
                           <div
                             className={`w-10 h-10 rounded-full ${theme.cardSecondary} flex items-center justify-center mr-3`}
                           >
-                            <Layers className="w-5 h-5 text-blue-500" />
+                            <Folders className="w-5 h-5 text-blue-500" />
                           </div>
                           <div
                             className="cursor-pointer"
