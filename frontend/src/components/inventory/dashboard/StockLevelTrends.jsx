@@ -2,13 +2,8 @@ import React from 'react';
 import LineChart from '../charts/LineChartComponent';
 import { Activity } from 'lucide-react';
 
-const StockLevelTrends = ({ theme, dateRange }) => {
-  const stockLevelData = [
-    { week: "Week 1", stock: 320 },
-    { week: "Week 2", stock: 295 },
-    { week: "Week 3", stock: 310 },
-    { week: "Week 4", stock: 342 },
-  ];
+const StockLevelTrends = ({ theme, dateRange, data }) => {
+  const stockLevelData = data || [];
 
   return (
     <div className={`p-6 ${theme.cardOpacity} backdrop-filter backdrop-blur-lg rounded-xl ${theme.border} border h-full`}>
@@ -33,13 +28,25 @@ const StockLevelTrends = ({ theme, dateRange }) => {
       
       {/* Responsive height */}
       <div className="h-[300px]">
-        <LineChart 
-          data={stockLevelData} 
-          dataKey="stock"
-          xAxisKey="week"
-          theme={theme} 
-          color="#10b981"
-        />
+        {stockLevelData.length > 0 ? (
+          <LineChart 
+            data={stockLevelData} 
+            dataKey="stock"
+            xAxisKey="week"
+            theme={theme} 
+            color="#10b981"
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <Activity className={`w-12 h-12 ${theme.textMuted} mx-auto mb-4 opacity-50`} />
+              <p className={`${theme.textMuted} text-lg font-medium`}>No Stock Data Available</p>
+              <p className={`${theme.textMuted} text-sm mt-2`}>
+                Stock trends will appear here once inventory data is recorded
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
