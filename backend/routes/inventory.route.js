@@ -10,7 +10,8 @@ import {
     deleteStockById, 
     updateBatchById,
     getBatchById,
-    getStockById
+    getStockById,
+    getDashboardStats
 } from "../controllers/inventory.controller.js";
 
 const router = express.Router();
@@ -34,5 +35,8 @@ router.get("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), getBat
 router.get("/stock/:medicineName", authorizeRoles("admin", "pharmacist_inventory"), getStockById);
 router.delete("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), deleteStockById);
 router.put("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), updateBatchById);
+
+router.get("/dashboard-stats", authorizeRoles("admin", "pharmacist_inventory"), getDashboardStats);
+
 
 export default router;

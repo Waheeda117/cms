@@ -261,3 +261,13 @@ export const finalizeBatch = async (batchId) => {
     throw error;
   }
 };
+
+export const getDashboardStats = async (dateRange = 'this_month') => {
+  try {
+    const response = await axiosInstance.get(`/inventory/dashboard-stats?dateRange=${dateRange}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    throw error;
+  }
+};

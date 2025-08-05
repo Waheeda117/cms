@@ -1,7 +1,9 @@
 import React from 'react';
+import { useEffect } from 'react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const BarChartComponent = ({ data, dataKey, xAxisKey, theme, color }) => {
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <RechartsBarChart
@@ -18,7 +20,7 @@ const BarChartComponent = ({ data, dataKey, xAxisKey, theme, color }) => {
         />
         <Tooltip 
           contentStyle={{ 
-            backgroundColor: theme.cardPrimary,
+            backgroundColor: "#fff",
             borderColor: theme.border,
             color: theme.textPrimary,
             borderRadius: '8px'
