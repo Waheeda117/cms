@@ -544,7 +544,9 @@ const UpdateBatch = () => {
     setEditValues((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  // ... existing code ...
+
+  const handleSubmit = async (e, finalize = false) => {
     e.preventDefault();
 
     if (medicines.length === 0) {
@@ -582,15 +584,25 @@ const UpdateBatch = () => {
         })),
       };
 
-      await updateBatchById(batchId, payload);
-      setSuccess("Batch updated successfully!");
+      // For draft batches, set isDraft based on finalize flag
+      if (batchIsDraft) {
+        payload.isDraft = !finalize;
+      }
+
+      const response = await updateBatchById(batchId, payload);
+
+      if (batchIsDraft && finalize) {
+        setSuccess("Batch finalized successfully!");
+        setBatchIsDraft(false); // Update local state
+      } else if (batchIsDraft) {
+        setSuccess("Draft saved successfully!");
+      } else {
+        setSuccess("Batch updated successfully!");
+      }
 
       // Clear persistent data after successful submit
       clearBatchData(batchId);
-
-      setTimeout(() => {
-        navigate(redirectPath);
-      }, 1500);
+      navigate(redirectPath);
     } catch (error) {
       setError(
         error.response?.data?.message ||
@@ -1227,54 +1239,54 @@ const UpdateBatch = () => {
               </div>
             )}
 
-          {/* Update Button with Cancel Button */}
-          <div className="flex justify-end space-x-4">
-            {/* NEW: Cancel Button */}
+          {/* Submit Button Section - Updated */}
+          <div className="flex justify-end gap-4">
+            {/* Cancel Button */}
             <button
               type="button"
               onClick={handleCancel}
-              className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} ${theme.textSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200`}
+              disabled={updateLoading}
+              className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              Cancel
+              <span>Cancel</span>
             </button>
 
-            {/*Finalize Button (only for drafts) */}
+            {/* Save Draft Button (only for drafts) */}
             {batchIsDraft && (
               <button
                 type="button"
-                onClick={handleFinalize}
-                disabled={
-                  finalizeLoading || !canUpdateBatch || editingIndex !== null
-                }
+                onClick={(e) => handleSubmit(e, false)}
+                disabled={updateLoading || editingIndex !== null}
                 className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {finalizeLoading ? (
+                {updateLoading ? (
                   <>
                     <Loader className="w-5 h-5 animate-spin" />
-                    <span>Finalizing...</span>
+                    <span>Saving Draft...</span>
                   </>
                 ) : (
-                  <span>Finalize Batch</span>
+                  <>
+                    <span>Save Draft</span>
+                  </>
                 )}
               </button>
             )}
 
+            {/* Save Button (finalizes draft or updates finalized batch) */}
             <button
-              type="submit"
-              disabled={
-                updateLoading || !canUpdateBatch || editingIndex !== null
-              }
+              type="button"
+              onClick={(e) => handleSubmit(e, true)}
+              disabled={updateLoading || editingIndex !== null}
               className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {updateLoading ? (
                 <>
                   <Loader className="w-5 h-5 animate-spin" />
-                  <span>Saving...</span>
+                  <span>{batchIsDraft ? "Saving..." : "Saving..."}</span>
                 </>
               ) : (
                 <>
-                  {/* <Plus className="w-5 h-5" /> */}
-                  <span>Save</span>
+                  <span>{batchIsDraft ? "Save" : "Save"}</span>
                 </>
               )}
             </button>
