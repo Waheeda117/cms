@@ -20,7 +20,6 @@ This project is a monorepo, separating concerns between the backend (server-side
 - Inventory & batch management for medicines and supplies
 - Patient registration, appointments, and prescriptions
 - Dashboard and analytics for healthcare management
-- Email notifications using Mailtrap
 
 ## Features
 
@@ -29,7 +28,7 @@ This project is a monorepo, separating concerns between the backend (server-side
 - **Patient Management**: Register and manage patient data, medical histories, and appointments.
 - **Responsive UI**: Frontend built with React, Vite, Tailwind CSS, and Zustand for state management.
 - **Real-Time Updates**: Utilizes modern React libraries like Framer Motion for animations and dynamic UI feedback.
-- **Deployment Ready**: Configured for deployment on Vercel with separate build settings for backend and frontend.
+- **Deployment Ready**: Configured for deployment on Render with separate build settings for backend and frontend.
 
 ## Project Structure
 
@@ -100,7 +99,6 @@ frontend/
   - **MongoDB & Mongoose** – Database for persistent storage and ODM for schema definitions.
   - **bcryptjs** – Password hashing.
   - **jsonwebtoken** – For authentication tokens.
-  - **Mailtrap** – For handling email notifications.
   - **Multer** – For file upload management.
   
 - **Frontend**
