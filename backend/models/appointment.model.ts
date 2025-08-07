@@ -1,14 +1,24 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
-const appointmentSchema = new mongoose.Schema(
+export interface IAppointment extends Document {
+  patient: mongoose.Types.ObjectId;
+  doctor: mongoose.Types.ObjectId;
+  appointmentDate: Date;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const appointmentSchema = new Schema<IAppointment>(
     {
         patient: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: Schema.Types.ObjectId,
             ref: 'Patient',
             required: true,
         },
         doctor: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: Schema.Types.ObjectId,
             ref: 'User',
             required: true, // Link to doctor (User model)
         },
@@ -29,4 +39,4 @@ const appointmentSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-export const Appointment = mongoose.model("Appointment", appointmentSchema);
+export const Appointment = mongoose.model<IAppointment>("Appointment", appointmentSchema); 

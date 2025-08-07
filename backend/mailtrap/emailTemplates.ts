@@ -1,4 +1,4 @@
-export const VERIFICATION_EMAIL_TEMPLATE = `
+export const VERIFICATION_EMAIL_TEMPLATE: string = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,7 +28,7 @@ export const VERIFICATION_EMAIL_TEMPLATE = `
 </html>
 `;
 
-export const PASSWORD_RESET_SUCCESS_TEMPLATE = `
+export const PASSWORD_RESET_SUCCESS_TEMPLATE: string = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -65,7 +65,7 @@ export const PASSWORD_RESET_SUCCESS_TEMPLATE = `
 </html>
 `;
 
-export const PASSWORD_RESET_REQUEST_TEMPLATE = `
+export const PASSWORD_RESET_REQUEST_TEMPLATE: string = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -92,4 +92,4 @@ export const PASSWORD_RESET_REQUEST_TEMPLATE = `
   </div>
 </body>
 </html>
-`;
+`; 

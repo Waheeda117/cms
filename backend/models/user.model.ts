@@ -1,6 +1,33 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
-const userSchema = new mongoose.Schema(
+export interface IUser extends Document {
+  email?: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  cnic?: string;
+  role: 'admin' | 'doctor' | 'receptionist' | 'pharmacist_dispenser' | 'pharmacist_inventory';
+  isDefaultPassword: boolean;
+  lastLogin: Date;
+  isVerified: boolean;
+  resetPasswordToken?: string;
+  resetPasswordExpiresAt?: Date;
+  verificationToken?: string;
+  verificationTokenExpiresAt?: Date;
+  phoneNumber?: string;
+  isActive: boolean;
+  gender?: 'male' | 'female' | 'other';
+  address?: string;
+  speciality?: string;
+  registrationNumber?: string;
+  doctorSchedule?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  _id: string;
+}
+
+const userSchema = new Schema<IUser>(
   {
     email: {
       type: String,
@@ -33,7 +60,7 @@ const userSchema = new mongoose.Schema(
       unique: false,
       sparse: true, // Allows multiple null values
       validate: {
-        validator: function (v) {
+        validator: function (v: string): boolean {
           if (!v) return true; // Allow empty/null values
           // CNIC format: 12345-1234567-1 (13 digits with dashes)
           return /^\d{5}-\d{7}-\d{1}$/.test(v);
@@ -56,7 +83,7 @@ const userSchema = new mongoose.Schema(
     // Add the isDefaultPassword flag
     isDefaultPassword: {
       type: Boolean,
-      default: function() {
+      default: function(this: IUser): boolean {
         return this.role !== "admin"; // Only set to true for non-admin roles
       },
     },
@@ -77,27 +104,27 @@ const userSchema = new mongoose.Schema(
     // Profile-specific fields
     phoneNumber: {
       type: String,
-      required: function () {
+      required: function (this: IUser): boolean {
         return this.role !== "admin"; // Only required for non-admins
       },
     },
     isActive: {
       type: Boolean,
       default: true,
-      required: function () {
+      required: function (this: IUser): boolean {
         return this.role !== "admin"; // Only required for non-admins
       },
     },
     gender: {
       type: String,
       enum: ["male", "female", "other"],
-      required: function () {
+      required: function (this: IUser): boolean {
         return this.role !== "admin"; // Made mandatory for non-admins
       },
     },
     address: {
       type: String,
-      required: function () {
+      required: function (this: IUser): boolean {
         return this.role !== "admin"; // Only required for non-admins
       },
     },
@@ -105,7 +132,7 @@ const userSchema = new mongoose.Schema(
     // Medical related fields (for Doctors/Pharmacists/Receptionists)
     speciality: {
       type: String,
-      required: function () {
+      required: function (this: IUser): boolean {
         return this.role === "doctor"; // Only for doctors
       },
     },
@@ -113,13 +140,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       unique: true,
       sparse: true,
-      required: function () {
+      required: function (this: IUser): boolean {
         return this.role === "doctor"; // Only for doctors
       },
     },
     doctorSchedule: {
       type: [String], // e.g., ["Monday", "Tuesday", ...]
-      required: function () {
+      required: function (this: IUser): boolean {
         return this.role === "doctor"; // Only for doctors
       },
     },
@@ -127,4 +154,4 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const User = mongoose.model("User", userSchema);
+export const User = mongoose.model<IUser>("User", userSchema); 
