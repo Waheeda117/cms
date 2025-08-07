@@ -7,9 +7,9 @@
 		"dev": "NODE_ENV=development tsx watch backend/index.ts",
 		"dev:nodemon": "NODE_ENV=development nodemon",
 		"start": "NODE_ENV=production node backend/dist/index.js",
-		"build": "npm install && npm install --prefix frontend && npm run build --prefix frontend",
-		"vercel-build": "npm run build",
+		"build": "npm run build:backend && npm install --prefix frontend && npm run build --prefix frontend",
 		"build:backend": "tsc --project backend/tsconfig.json",
+		"vercel-build": "npm run build",
 		"dev:backend": "tsx watch backend/index.ts"
 	},
 	"keywords": [],

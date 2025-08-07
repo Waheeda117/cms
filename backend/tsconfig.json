@@ -12,9 +12,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "declaration": false,          // Changed: false for production builds
+    "declarationMap": false,       // Changed: false for production builds
+    "sourceMap": false,            // Changed: false for production builds (optional)
     "removeComments": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -36,4 +36,4 @@
     "node_modules",
     "dist"
   ]
-} 
+}

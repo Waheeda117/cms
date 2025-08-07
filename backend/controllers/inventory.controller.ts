@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { Inventory, IInventory, IBatchMedicine } from "../models/inventory.model.js";
 import { AuthenticatedRequest } from "../types/index.js";
 import mongoose from "mongoose";
+import { PipelineStage } from 'mongoose';
+
 
 interface MedicineData {
     medicineId: number;
@@ -1390,10 +1392,10 @@ const getSummaryStats = async () => {
                                     input: "$batches",
                                     cond: {
                                         $and: [
-                                            { $gte: ["$this.expiryDate", new Date()] },
+                                            { $gte: ["$$this.expiryDate", new Date()] }, // Fixed: $$this
                                             {
                                                 $lte: [
-                                                    "$this.expiryDate",
+                                                    "$$this.expiryDate", // Fixed: $$this
                                                     { $dateAdd: { startDate: new Date(), unit: "day", amount: 10 } }
                                                 ]
                                             }
@@ -1432,9 +1434,8 @@ const getSummaryStats = async () => {
     };
 };
 
-// Helper function for stock level trends
 const getStockTrends = async (startDate: Date, endDate: Date, dateRange: string) => {
-    const pipeline = [
+    const pipeline: PipelineStage[] = [
         {
             $match: {
                 isDraft: false,
@@ -1460,7 +1461,7 @@ const getStockTrends = async (startDate: Date, endDate: Date, dateRange: string)
     
     // Format data for chart
     if (dateRange === "this_week") {
-        return results.map((item, index) => ({
+        return results.map((item: any, index: number) => ({
             week: `Day ${index + 1}`,
             stock: item.totalAdded
         }));
@@ -1470,7 +1471,7 @@ const getStockTrends = async (startDate: Date, endDate: Date, dateRange: string)
         let weekCounter = 1;
         let currentWeekStock = 0;
         
-        results.forEach((item, index) => {
+        results.forEach((item: any, index: number) => {
             currentWeekStock += item.totalAdded;
             
             if ((index + 1) % 7 === 0 || index === results.length - 1) {
@@ -1494,7 +1495,7 @@ const getStockTrends = async (startDate: Date, endDate: Date, dateRange: string)
 
 // Helper function for top stocked medicines
 const getTopStockedMedicines = async () => {
-    const pipeline = [
+    const pipeline: PipelineStage[] = [ // Add type annotation here
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
@@ -1508,7 +1509,8 @@ const getTopStockedMedicines = async () => {
         {
             $project: {
                 medicine: "$_id",
-                stock: "$totalStock"
+                stock: "$totalStock",
+                _id: 0 // Exclude the original _id field
             }
         }
     ];
@@ -1558,12 +1560,11 @@ const getLowStockItems = async () => {
     }));
 };
 
-// Helper function for expiring soon items
 const getExpiringSoonItems = async () => {
     const tenDaysFromNow = new Date();
     tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
-
-    const pipeline = [
+    
+    const pipeline: PipelineStage[] = [
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
@@ -1597,10 +1598,10 @@ const getExpiringSoonItems = async () => {
             }
         }
     ];
-
+    
     const results = await Inventory.aggregate(pipeline);
     
-    return results.map((item, index) => ({
+    return results.map((item: any, index: number) => ({
         id: index + 1,
         ...item
     }));
