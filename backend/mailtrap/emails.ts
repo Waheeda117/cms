@@ -5,7 +5,7 @@ import {
 } from "./emailTemplates.js";
 import { mailtrapClient, sender } from "./mailtrap.config.js";
 
-export const sendVerificationEmail = async (email, verificationToken) => {
+export const sendVerificationEmail = async (email: string, verificationToken: string): Promise<void> => {
 	const recipient = [{ email }];
 
 	try {
@@ -20,12 +20,12 @@ export const sendVerificationEmail = async (email, verificationToken) => {
 		console.log("Email sent successfully", response);
 	} catch (error) {
 		console.error(`Error sending verification`, error);
-
-		throw new Error(`Error sending verification email: ${error}`);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+		throw new Error(`Error sending verification email: ${errorMessage}`);
 	}
 };
 
-export const sendWelcomeEmail = async (email, name) => {
+export const sendWelcomeEmail = async (email: string, name: string): Promise<void> => {
 	const recipient = [{ email }];
 
 	try {
@@ -42,12 +42,12 @@ export const sendWelcomeEmail = async (email, name) => {
 		console.log("Welcome email sent successfully", response);
 	} catch (error) {
 		console.error(`Error sending welcome email`, error);
-
-		throw new Error(`Error sending welcome email: ${error}`);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+		throw new Error(`Error sending welcome email: ${errorMessage}`);
 	}
 };
 
-export const sendPasswordResetEmail = async (email, resetURL) => {
+export const sendPasswordResetEmail = async (email: string, resetURL: string): Promise<void> => {
 	const recipient = [{ email }];
 
 	try {
@@ -60,12 +60,12 @@ export const sendPasswordResetEmail = async (email, resetURL) => {
 		});
 	} catch (error) {
 		console.error(`Error sending password reset email`, error);
-
-		throw new Error(`Error sending password reset email: ${error}`);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+		throw new Error(`Error sending password reset email: ${errorMessage}`);
 	}
 };
 
-export const sendResetSuccessEmail = async (email) => {
+export const sendResetSuccessEmail = async (email: string): Promise<void> => {
 	const recipient = [{ email }];
 
 	try {
@@ -80,7 +80,7 @@ export const sendResetSuccessEmail = async (email) => {
 		console.log("Password reset email sent successfully", response);
 	} catch (error) {
 		console.error(`Error sending password reset success email`, error);
-
-		throw new Error(`Error sending password reset success email: ${error}`);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+		throw new Error(`Error sending password reset success email: ${errorMessage}`);
 	}
-};
+}; 

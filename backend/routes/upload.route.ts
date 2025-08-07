@@ -4,6 +4,6 @@ import upload from '../middleware/multer.middleware.js';
 
 const router = express.Router();
 
-router.post('/', upload.single('file'), uploadToCloudinary);
+router.post('/', upload.single('file'), uploadToCloudinary as any);
 
-export default router;
+export default router; 

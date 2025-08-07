@@ -1,7 +1,39 @@
-import { Inventory } from "../models/inventory.model.js";
+import { Request, Response } from "express";
+import { Inventory, IInventory, IBatchMedicine } from "../models/inventory.model.js";
+import { AuthenticatedRequest } from "../types/index.js";
 import mongoose from "mongoose";
 
-export const addToStock = async (req, res) => {
+interface MedicineData {
+    medicineId: number;
+    medicineName: string;
+    quantity: number;
+    price: number;
+    expiryDate: string | Date;
+    dateOfPurchase: string | Date;
+    reorderLevel: number;
+    totalAmount?: number;
+}
+
+interface AddToStockData {
+    batchNumber: string;
+    billID: string;
+    medicines: MedicineData[];
+    overallPrice: number;
+    attachments?: string[];
+    miscellaneousAmount?: number;
+}
+
+interface DraftBatchData {
+    batchNumber: string;
+    billID: string;
+    medicines: MedicineData[];
+    overallPrice: number;
+    attachments?: string[];
+    miscellaneousAmount?: number;
+    draftNote?: string;
+}
+
+export const addToStock = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const {
             batchNumber,
@@ -14,18 +46,20 @@ export const addToStock = async (req, res) => {
 
         // Validate required fields
         if (!batchNumber || !billID || !medicines || !Array.isArray(medicines) || medicines.length === 0 || !overallPrice) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "All fields are required. Medicines must be a non-empty array."
             });
+            return;
         }
 
         // Validate miscellaneous amount
         if (miscellaneousAmount < 0) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Miscellaneous amount cannot be negative"
             });
+            return;
         }
 
         // Check for duplicate medicine IDs within the same batch
@@ -33,10 +67,11 @@ export const addToStock = async (req, res) => {
         const uniqueMedicineIds = [...new Set(medicineIds)];
         
         if (medicineIds.length !== uniqueMedicineIds.length) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Duplicate medicines are not allowed in the same batch"
             });
+            return;
         }
 
         // Validate each medicine in the array
@@ -44,17 +79,19 @@ export const addToStock = async (req, res) => {
             const { medicineId, medicineName, quantity, price, expiryDate, dateOfPurchase, reorderLevel } = medicine;
             
             if (!medicineId || !medicineName || !quantity || !price || !expiryDate || !dateOfPurchase || reorderLevel === undefined) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "All medicine fields are required: medicineId, medicineName, quantity, price, expiryDate, dateOfPurchase, reorderLevel"
                 });
+                return;
             }
 
             if (quantity <= 0 || price <= 0) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "Quantity and price must be greater than 0"
                 });
+                return;
             }
 
             // Calculate total amount for each medicine
@@ -62,27 +99,29 @@ export const addToStock = async (req, res) => {
         }
 
         // Calculate total medicines price
-        const totalMedicinesPrice = medicines.reduce((sum, medicine) => sum + medicine.totalAmount, 0);
+        const totalMedicinesPrice = medicines.reduce((sum, medicine) => sum + (medicine.totalAmount || 0), 0);
         
         // Validate price matching with miscellaneous amount
         const totalWithMiscellaneous = totalMedicinesPrice + miscellaneousAmount;
         const priceDifference = Math.abs(totalWithMiscellaneous - overallPrice);
         
         if (priceDifference > 0.01) { // Allow small floating point tolerance
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: `Total medicines price (${totalMedicinesPrice}) plus miscellaneous amount (${miscellaneousAmount}) must equal overall price (${overallPrice})`
             });
+            return;
         }
 
         // Check if batch already exists
         const existingBatch = await Inventory.findOne({ batchNumber });
 
         if (existingBatch) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Batch number already exists. Please use a different batch number."
             });
+            return;
         }
 
         // Create new batch
@@ -93,28 +132,29 @@ export const addToStock = async (req, res) => {
             overallPrice,
             miscellaneousAmount,
             attachments,
-            createdBy: req.user.id
+            createdBy: req.user!._id
         });
 
         await newBatch.save();
 
-        return res.status(201).json({
+        res.status(201).json({
             success: true,
             message: `New batch created successfully with ${medicines.length} medicines${miscellaneousAmount > 0 ? ' and miscellaneous amount' : ''}`,
             data: newBatch
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in addToStock:", error);
         
         if (error.code === 11000) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Batch number already exists"
             });
+            return;
         }
 
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
@@ -122,7 +162,7 @@ export const addToStock = async (req, res) => {
     }
 };
 
-export const addDraftBatch = async (req, res) => {
+export const addDraftBatch = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const {
             batchNumber,
@@ -136,18 +176,20 @@ export const addDraftBatch = async (req, res) => {
 
         // Same validation as addToStock but save as draft
         if (!batchNumber || !billID || !medicines || !Array.isArray(medicines) || medicines.length === 0 || !overallPrice) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "All fields are required. Medicines must be a non-empty array."
             });
+            return;
         }
 
         // Validate miscellaneous amount
         if (miscellaneousAmount < 0) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Miscellaneous amount cannot be negative"
             });
+            return;
         }
 
         // Check for duplicate medicine IDs within the same batch
@@ -155,10 +197,11 @@ export const addDraftBatch = async (req, res) => {
         const uniqueMedicineIds = [...new Set(medicineIds)];
         
         if (medicineIds.length !== uniqueMedicineIds.length) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Duplicate medicines are not allowed in the same batch"
             });
+            return;
         }
 
         // Validate each medicine
@@ -166,41 +209,45 @@ export const addDraftBatch = async (req, res) => {
             const { medicineId, medicineName, quantity, price, expiryDate, dateOfPurchase, reorderLevel } = medicine;
             
             if (!medicineId || !medicineName || !quantity || !price || !expiryDate || !dateOfPurchase || reorderLevel === undefined) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "All medicine fields are required"
                 });
+                return;
             }
 
             if (quantity <= 0 || price <= 0) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "Quantity and price must be greater than 0"
                 });
+                return;
             }
 
             medicine.totalAmount = quantity * price;
         }
 
         // Validate price matching
-        const totalMedicinesPrice = medicines.reduce((sum, medicine) => sum + medicine.totalAmount, 0);
+        const totalMedicinesPrice = medicines.reduce((sum, medicine) => sum + (medicine.totalAmount || 0), 0);
         const totalWithMiscellaneous = totalMedicinesPrice + miscellaneousAmount;
         const priceDifference = Math.abs(totalWithMiscellaneous - overallPrice);
         
         if (priceDifference > 0.01) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: `Total medicines price plus miscellaneous amount must equal overall price`
             });
+            return;
         }
 
         // Check if batch already exists
         const existingBatch = await Inventory.findOne({ batchNumber });
         if (existingBatch) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Batch number already exists. Please use a different batch number."
             });
+            return;
         }
 
         // Create new DRAFT batch
@@ -213,28 +260,29 @@ export const addDraftBatch = async (req, res) => {
             attachments,
             isDraft: true, // Mark as draft
             draftNote,
-            createdBy: req.user.id
+            createdBy: req.user!._id
         });
 
         await newDraftBatch.save();
 
-        return res.status(201).json({
+        res.status(201).json({
             success: true,
             message: `Draft batch created successfully with ${medicines.length} medicines. This batch will not affect stock levels until finalized.`,
             data: newDraftBatch
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in addDraftBatch:", error);
         
         if (error.code === 11000) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Batch number already exists"
             });
+            return;
         }
 
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
@@ -242,30 +290,33 @@ export const addDraftBatch = async (req, res) => {
     }
 };
 
-export const finalizeDraftBatch = async (req, res) => {
+export const finalizeDraftBatch = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
 
         if (!id) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Batch ID is required"
             });
+            return;
         }
 
         const batch = await Inventory.findById(id);
         if (!batch) {
-            return res.status(404).json({
+            res.status(404).json({
                 success: false,
                 message: "Batch not found"
             });
+            return;
         }
 
         if (!batch.isDraft) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "This batch is already finalized"
             });
+            return;
         }
 
         // Finalize the batch
@@ -273,15 +324,15 @@ export const finalizeDraftBatch = async (req, res) => {
         batch.finalizedAt = new Date();
         await batch.save();
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             message: "Draft batch finalized successfully. Stock levels have been updated.",
             data: batch
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in finalizeDraftBatch:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
@@ -289,7 +340,7 @@ export const finalizeDraftBatch = async (req, res) => {
     }
 };
 
-export const stockList = async (req, res) => {
+export const stockList = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const {
             page = 1,
@@ -301,7 +352,7 @@ export const stockList = async (req, res) => {
         } = req.query;
 
         // Build search query
-        const searchQuery = {};
+        const searchQuery: any = {};
 
         // Filter drafts based on parameter
         if (includeDrafts === "false") {
@@ -318,27 +369,27 @@ export const stockList = async (req, res) => {
         }
 
         // Build sort object
-        const sortObj = {};
-        sortObj[sortBy] = sortOrder === "asc" ? 1 : -1;
+        const sortObj: any = {};
+        sortObj[sortBy as string] = sortOrder === "asc" ? 1 : -1;
 
         // Calculate pagination
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
         // Execute query with pagination
         const [batches, totalCount] = await Promise.all([
             Inventory.find(searchQuery)
-                .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
-                .skip((parseInt(page) - 1) * parseInt(limit))
-                .limit(parseInt(limit))
+                .sort(sortObj)
+                .skip(skip)
+                .limit(parseInt(limit as string))
                 .populate('createdBy', 'name email')
                 .lean(),
             Inventory.countDocuments(searchQuery)
         ]);
 
         // Calculate pagination info
-        const totalPages = Math.ceil(totalCount / parseInt(limit));
-        const hasNextPage = parseInt(page) < totalPages;
-        const hasPrevPage = parseInt(page) > 1;
+        const totalPages = Math.ceil(totalCount / parseInt(limit as string));
+        const hasNextPage = parseInt(page as string) < totalPages;
+        const hasPrevPage = parseInt(page as string) > 1;
 
         // Add status and additional info to each batch
         const enrichedBatches = batches.map(batch => {
@@ -371,15 +422,15 @@ export const stockList = async (req, res) => {
             };
         });
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             data: {
                 batches: enrichedBatches,
                 pagination: {
-                    currentPage: parseInt(page),
+                    currentPage: parseInt(page as string),
                     totalPages,
                     totalItems: totalCount,
-                    itemsPerPage: parseInt(limit),
+                    itemsPerPage: parseInt(limit as string),
                     hasNextPage,
                     hasPrevPage
                 },
@@ -395,9 +446,9 @@ export const stockList = async (req, res) => {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in stockList:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
@@ -405,7 +456,7 @@ export const stockList = async (req, res) => {
     }
 };
 
-export const allStocksList = async (req, res) => {
+export const allStocksList = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const {
             page = 1,
@@ -416,7 +467,7 @@ export const allStocksList = async (req, res) => {
         } = req.query;
 
         // Build aggregation pipeline to flatten medicines across all batches
-        const pipeline = [];
+        const pipeline: any[] = [];
 
         // IMPORTANT: Only include finalized batches in stock calculations
         pipeline.push({ $match: { isDraft: false } });
@@ -425,7 +476,7 @@ export const allStocksList = async (req, res) => {
         pipeline.push({ $unwind: "$medicines" });
 
         // Match stage for filtering
-        const matchStage = {};
+        const matchStage: any = {};
         if (search) {
             matchStage.$or = [
                 { "medicines.medicineName": { $regex: search, $options: "i" } },
@@ -596,8 +647,8 @@ export const allStocksList = async (req, res) => {
         });
 
         // Sort stage
-        const sortObj = {};
-        sortObj[sortBy] = sortOrder === "asc" ? 1 : -1;
+        const sortObj: any = {};
+        sortObj[sortBy as string] = sortOrder === "asc" ? 1 : -1;
         pipeline.push({ $sort: sortObj });
 
         // Get total count
@@ -606,17 +657,17 @@ export const allStocksList = async (req, res) => {
         const totalCount = countResult.length > 0 ? countResult[0].total : 0;
 
         // Add pagination
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
         pipeline.push({ $skip: skip });
-        pipeline.push({ $limit: parseInt(limit) });
+        pipeline.push({ $limit: parseInt(limit as string) });
 
         // Execute aggregation
         const medicines = await Inventory.aggregate(pipeline);
 
         // Calculate pagination info
-        const totalPages = Math.ceil(totalCount / parseInt(limit));
-        const hasNextPage = parseInt(page) < totalPages;
-        const hasPrevPage = parseInt(page) > 1;
+        const totalPages = Math.ceil(totalCount / parseInt(limit as string));
+        const hasNextPage = parseInt(page as string) < totalPages;
+        const hasPrevPage = parseInt(page as string) > 1;
 
         // Calculate summary statistics
         const lowStockCount = medicines.filter(item => item.status === "Low Stock").length;
@@ -629,15 +680,15 @@ export const allStocksList = async (req, res) => {
         // Count medicines with expiring batches (within 10 days, but not expired yet)
         const expiringMedicinesCount = medicines.filter(item => item.hasExpiringBatches).length;
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             data: {
                 medicines,
                 pagination: {
-                    currentPage: parseInt(page),
+                    currentPage: parseInt(page as string),
                     totalPages,
                     totalItems: totalCount,
-                    itemsPerPage: parseInt(limit),
+                    itemsPerPage: parseInt(limit as string),
                     hasNextPage,
                     hasPrevPage
                 },
@@ -652,9 +703,9 @@ export const allStocksList = async (req, res) => {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in allStocksList:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
@@ -662,7 +713,56 @@ export const allStocksList = async (req, res) => {
     }
 };
 
-export const getStockById = async (req, res) => {
+export const getBatchById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        // Validate if ID is provided
+        if (!id) {
+            res.status(400).json({
+                success: false,
+                message: "Batch ID is required"
+            });
+            return;
+        }
+
+        // Find the batch by ID
+        const batch = await Inventory.findById(id).populate('createdBy', 'name email username');
+        
+        if (!batch) {
+            res.status(404).json({
+                success: false,
+                message: "Batch not found"
+            });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Batch retrieved successfully",
+            data: batch
+        });
+
+    } catch (error: any) {
+        console.error("Error in getBatchById:", error);
+        
+        if (error.name === 'CastError') {
+            res.status(400).json({
+                success: false,
+                message: "Invalid batch ID format"
+            });
+            return;
+        }
+
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
+export const getStockById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const { medicineName } = req.params;
         const {
@@ -673,17 +773,18 @@ export const getStockById = async (req, res) => {
         } = req.query;
 
         if (!medicineName) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Medicine name is required"
             });
+            return;
         }
 
         // Decode the medicine name in case it's URL encoded
         const decodedMedicineName = decodeURIComponent(medicineName);
 
         // Build aggregation pipeline
-        const pipeline = [];
+        const pipeline: any[] = [];
 
         // Match documents that contain the specific medicine
         pipeline.push({
@@ -753,8 +854,8 @@ export const getStockById = async (req, res) => {
         });
 
         // Sort stage
-        const sortObj = {};
-        sortObj[sortBy] = sortOrder === "asc" ? 1 : -1;
+        const sortObj: any = {};
+        sortObj[sortBy as string] = sortOrder === "asc" ? 1 : -1;
         pipeline.push({ $sort: sortObj });
 
         // Get total count
@@ -763,16 +864,17 @@ export const getStockById = async (req, res) => {
         const totalCount = countResult.length > 0 ? countResult[0].total : 0;
 
         if (totalCount === 0) {
-            return res.status(404).json({
+            res.status(404).json({
                 success: false,
                 message: `No stock found for medicine: ${decodedMedicineName}`
             });
+            return;
         }
 
         // Add pagination
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
         pipeline.push({ $skip: skip });
-        pipeline.push({ $limit: parseInt(limit) });
+        pipeline.push({ $limit: parseInt(limit as string) });
 
         // Populate createdBy field
         pipeline.push({
@@ -806,20 +908,20 @@ export const getStockById = async (req, res) => {
         const expiringSoonEntries = stockEntries.filter(entry => entry.medicine.expiryStatus === "Expiring Soon").length;
 
         // Calculate pagination info
-        const totalPages = Math.ceil(totalCount / parseInt(limit));
-        const hasNextPage = parseInt(page) < totalPages;
-        const hasPrevPage = parseInt(page) > 1;
+        const totalPages = Math.ceil(totalCount / parseInt(limit as string));
+        const hasNextPage = parseInt(page as string) < totalPages;
+        const hasPrevPage = parseInt(page as string) > 1;
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             data: {
                 medicineName: decodedMedicineName,
                 stockEntries,
                 pagination: {
-                    currentPage: parseInt(page),
+                    currentPage: parseInt(page as string),
                     totalPages,
                     totalItems: totalCount,
-                    itemsPerPage: parseInt(limit),
+                    itemsPerPage: parseInt(limit as string),
                     hasNextPage,
                     hasPrevPage
                 },
@@ -836,9 +938,9 @@ export const getStockById = async (req, res) => {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in getStockById:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
@@ -846,29 +948,31 @@ export const getStockById = async (req, res) => {
     }
 };
 
-export const deleteStockById = async (req, res) => {
+export const deleteStockById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
 
         // Validate if ID is provided
         if (!id) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Batch ID is required"
             });
+            return;
         }
 
         // Find and delete the batch
         const deletedBatch = await Inventory.findByIdAndDelete(id);
 
         if (!deletedBatch) {
-            return res.status(404).json({
+            res.status(404).json({
                 success: false,
                 message: "Batch not found"
             });
+            return;
         }
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             message: `Batch deleted successfully`,
             data: {
@@ -882,17 +986,18 @@ export const deleteStockById = async (req, res) => {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in deleteStockById:", error);
         
         if (error.name === 'CastError') {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Invalid batch ID format"
             });
+            return;
         }
 
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
@@ -900,35 +1005,38 @@ export const deleteStockById = async (req, res) => {
     }
 };
 
-export const updateBatchById = async (req, res) => {
+export const updateBatchById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
         const updateData = req.body;
 
         // Validate if ID is provided
         if (!id) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Batch ID is required"
             });
+            return;
         }
 
         // Check if batch exists
         const existingBatch = await Inventory.findById(id);
         if (!existingBatch) {
-            return res.status(404).json({
+            res.status(404).json({
                 success: false,
                 message: "Batch not found"
             });
+            return;
         }
 
         // If updating a draft batch, allow all updates
         // If updating a finalized batch, prevent certain changes if needed
         if (!existingBatch.isDraft && updateData.isDraft === true) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Cannot convert a finalized batch back to draft"
             });
+            return;
         }
 
         // If finalizing a draft (isDraft: false), set finalizedAt
@@ -944,31 +1052,34 @@ export const updateBatchById = async (req, res) => {
             });
             
             if (batchExists) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "Batch number already exists. Please use a different batch number."
                 });
+                return;
             }
         }
 
         // Validate medicines array if provided
         if (updateData.medicines) {
             if (!Array.isArray(updateData.medicines)) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "Medicines must be an array"
                 });
+                return;
             }
 
             // Check for duplicate medicine IDs within the batch
-            const medicineIds = updateData.medicines.map(med => med.medicineId).filter(id => id !== null && id !== undefined);
+            const medicineIds = updateData.medicines.map((med: any) => med.medicineId).filter((id: any) => id !== null && id !== undefined);
             const uniqueMedicineIds = [...new Set(medicineIds)];
             
             if (medicineIds.length !== uniqueMedicineIds.length) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "Duplicate medicines are not allowed in the same batch. Each medicine can only be added once."
                 });
+                return;
             }
 
             // Validate each medicine in the array
@@ -977,49 +1088,55 @@ export const updateBatchById = async (req, res) => {
                 
                 // Validate required fields including medicineId
                 if (!medicineId || !medicineName || !quantity || !price || !expiryDate || !dateOfPurchase || reorderLevel === undefined) {
-                    return res.status(400).json({
+                    res.status(400).json({
                         success: false,
                         message: "All medicine fields are required: medicineId, medicineName, quantity, price, expiryDate, dateOfPurchase, reorderLevel"
                     });
+                    return;
                 }
 
                 // Validate medicineId is a positive number
                 if (!Number.isInteger(medicineId) || medicineId <= 0) {
-                    return res.status(400).json({
+                    res.status(400).json({
                         success: false,
                         message: "Medicine ID must be a positive integer"
                     });
+                    return;
                 }
 
                 if (quantity <= 0 || price <= 0) {
-                    return res.status(400).json({
+                    res.status(400).json({
                         success: false,
                         message: "Quantity and price must be greater than 0"
                     });
+                    return;
                 }
 
                 // Validate quantity and price are numbers
                 if (!Number.isInteger(quantity) || isNaN(parseFloat(price))) {
-                    return res.status(400).json({
+                    res.status(400).json({
                         success: false,
                         message: "Quantity must be an integer and price must be a valid number"
                     });
+                    return;
                 }
 
                 // Validate dates
                 if (isNaN(Date.parse(expiryDate)) || isNaN(Date.parse(dateOfPurchase))) {
-                    return res.status(400).json({
+                    res.status(400).json({
                         success: false,
                         message: "Invalid date format for expiryDate or dateOfPurchase"
                     });
+                    return;
                 }
 
                 // Validate reorderLevel
                 if (!Number.isInteger(reorderLevel) || reorderLevel < 0) {
-                    return res.status(400).json({
+                    res.status(400).json({
                         success: false,
                         message: "Reorder level must be a non-negative integer"
                     });
+                    return;
                 }
 
                 // Calculate total amount for each medicine
@@ -1030,69 +1147,75 @@ export const updateBatchById = async (req, res) => {
         // Validate miscellaneous amount if provided
         if (updateData.miscellaneousAmount !== undefined) {
             if (isNaN(parseFloat(updateData.miscellaneousAmount)) || updateData.miscellaneousAmount < 0) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "Miscellaneous amount must be a non-negative number"
                 });
+                return;
             }
         }
 
         // Validate other numeric fields if provided
         if (updateData.overallPrice !== undefined) {
             if (isNaN(parseFloat(updateData.overallPrice)) || updateData.overallPrice < 0) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "Overall price must be a non-negative number"
                 });
+                return;
             }
         }
 
         // If both medicines and overallPrice are being updated, validate total
         if (updateData.medicines && updateData.overallPrice !== undefined) {
-            const totalMedicinesPrice = updateData.medicines.reduce((sum, medicine) => sum + medicine.totalAmount, 0);
+            const totalMedicinesPrice = updateData.medicines.reduce((sum: number, medicine: any) => sum + medicine.totalAmount, 0);
             const miscellaneousAmount = updateData.miscellaneousAmount !== undefined ? updateData.miscellaneousAmount : (existingBatch.miscellaneousAmount || 0);
             const totalWithMiscellaneous = totalMedicinesPrice + miscellaneousAmount;
             const priceDifference = Math.abs(totalWithMiscellaneous - updateData.overallPrice);
             
             if (priceDifference > 0.01) { // Allow small floating point tolerance
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: `Total medicines price (${totalMedicinesPrice.toFixed(2)}) plus miscellaneous amount (${miscellaneousAmount.toFixed(2)}) must equal overall price (${parseFloat(updateData.overallPrice).toFixed(2)}). Current difference: ${priceDifference.toFixed(2)}`
                 });
+                return;
             }
         }
 
         // If only medicines are being updated but overallPrice exists, validate against existing overallPrice
         if (updateData.medicines && updateData.overallPrice === undefined && existingBatch.overallPrice) {
-            const totalMedicinesPrice = updateData.medicines.reduce((sum, medicine) => sum + medicine.totalAmount, 0);
+            const totalMedicinesPrice = updateData.medicines.reduce((sum: number, medicine: any) => sum + medicine.totalAmount, 0);
             const miscellaneousAmount = updateData.miscellaneousAmount !== undefined ? updateData.miscellaneousAmount : (existingBatch.miscellaneousAmount || 0);
             const totalWithMiscellaneous = totalMedicinesPrice + miscellaneousAmount;
             const priceDifference = Math.abs(totalWithMiscellaneous - existingBatch.overallPrice);
             
             if (priceDifference > 0.01) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: `Total medicines price (${totalMedicinesPrice.toFixed(2)}) plus miscellaneous amount (${miscellaneousAmount.toFixed(2)}) must equal existing overall price (${existingBatch.overallPrice.toFixed(2)}). Current difference: ${priceDifference.toFixed(2)}`
                 });
+                return;
             }
         }
 
         // Validate attachments array if provided
         if (updateData.attachments !== undefined) {
             if (!Array.isArray(updateData.attachments)) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: "Attachments must be an array"
                 });
+                return;
             }
 
             // Validate each attachment URL
             for (const attachment of updateData.attachments) {
                 if (typeof attachment !== 'string' || attachment.trim() === '') {
-                    return res.status(400).json({
+                    res.status(400).json({
                         success: false,
                         message: "Each attachment must be a valid URL string"
                     });
+                    return;
                 }
             }
         }
@@ -1104,6 +1227,13 @@ export const updateBatchById = async (req, res) => {
             { new: true, runValidators: true }
         ).populate('createdBy', 'name email');
 
+        if (!updatedBatch) {
+            res.status(404).json({
+                success: false,
+                message: "Batch not found"
+            });
+            return;
+        }
 
         // Prepare response with summary information
         const totalMedicines = updatedBatch.medicines.length;
@@ -1112,7 +1242,7 @@ export const updateBatchById = async (req, res) => {
         const lowStockMedicines = updatedBatch.medicines.filter(med => med.quantity <= med.reorderLevel).length;
         const expiredMedicines = updatedBatch.medicines.filter(med => new Date(med.expiryDate) < new Date()).length;
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             message: `${updatedBatch.isDraft ? 'Draft batch' : 'Batch'} updated successfully`,
             data: {
@@ -1135,35 +1265,38 @@ export const updateBatchById = async (req, res) => {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in updateBatchById:", error);
         
         if (error.name === 'CastError') {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: "Invalid batch ID format"
             });
+            return;
         }
 
         if (error.code === 11000) {
             // Handle duplicate key errors
             const duplicateField = Object.keys(error.keyPattern)[0];
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: `${duplicateField} already exists. Please use a different value.`
             });
+            return;
         }
 
         if (error.name === 'ValidationError') {
-            const validationErrors = Object.values(error.errors).map(err => err.message);
-            return res.status(400).json({
+            const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+            res.status(400).json({
                 success: false,
                 message: "Validation error",
                 errors: validationErrors
             });
+            return;
         }
 
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred'
@@ -1171,62 +1304,13 @@ export const updateBatchById = async (req, res) => {
     }
 };
 
-// Get batch by ID
-export const getBatchById = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Validate if ID is provided
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: "Batch ID is required"
-            });
-        }
-
-        // Find the batch by ID
-        const batch = await Inventory.findById(id).populate('createdBy', 'name email username');
-        
-        if (!batch) {
-            return res.status(404).json({
-                success: false,
-                message: "Batch not found"
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Batch retrieved successfully",
-            data: batch
-        });
-
-    } catch (error) {
-        console.error("Error in getBatchById:", error);
-        
-        if (error.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid batch ID format"
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error",
-            error: error.message
-        });
-    }
-};
-
-
-
-export const getDashboardStats = async (req, res) => {
+export const getDashboardStats = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const { dateRange = "this_month" } = req.query;
         
         // Calculate date ranges for trends
         const now = new Date();
-        let startDate, endDate;
+        let startDate: Date, endDate: Date;
         
         if (dateRange === "this_week") {
             startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
@@ -1246,13 +1330,13 @@ export const getDashboardStats = async (req, res) => {
             expiringSoonItems
         ] = await Promise.all([
             getSummaryStats(),
-            getStockTrends(startDate, endDate, dateRange),
+            getStockTrends(startDate, endDate, dateRange as string),
             getTopStockedMedicines(),
             getLowStockItems(),
             getExpiringSoonItems()
         ]);
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             data: {
                 summary: summaryStats,
@@ -1263,9 +1347,9 @@ export const getDashboardStats = async (req, res) => {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in getDashboardStats:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
@@ -1273,7 +1357,6 @@ export const getDashboardStats = async (req, res) => {
     }
 };
 
-// Helper function for summary statistics
 // Helper function for summary statistics
 const getSummaryStats = async () => {
     const pipeline = [
@@ -1307,10 +1390,10 @@ const getSummaryStats = async () => {
                                     input: "$batches",
                                     cond: {
                                         $and: [
-                                            { $gte: ["$$this.expiryDate", new Date()] },
+                                            { $gte: ["$this.expiryDate", new Date()] },
                                             {
                                                 $lte: [
-                                                    "$$this.expiryDate",
+                                                    "$this.expiryDate",
                                                     { $dateAdd: { startDate: new Date(), unit: "day", amount: 10 } }
                                                 ]
                                             }
@@ -1334,7 +1417,7 @@ const getSummaryStats = async () => {
     const totalStockValue = results.reduce((sum, item) => sum + item.totalValue, 0);
 
     // Format stock value in thousands (K)
-    let formattedStockValue;
+    let formattedStockValue: string;
     if (totalStockValue >= 1000) {
         formattedStockValue = (totalStockValue / 1000).toFixed(1) + "K";
     } else {
@@ -1350,7 +1433,7 @@ const getSummaryStats = async () => {
 };
 
 // Helper function for stock level trends
-const getStockTrends = async (startDate, endDate, dateRange) => {
+const getStockTrends = async (startDate: Date, endDate: Date, dateRange: string) => {
     const pipeline = [
         {
             $match: {
@@ -1383,7 +1466,7 @@ const getStockTrends = async (startDate, endDate, dateRange) => {
         }));
     } else {
         // Group by weeks for monthly view
-        const weeklyData = [];
+        const weeklyData: any[] = [];
         let weekCounter = 1;
         let currentWeekStock = 0;
         

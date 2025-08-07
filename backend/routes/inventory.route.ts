@@ -38,5 +38,4 @@ router.put("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), update
 
 router.get("/dashboard-stats", authorizeRoles("admin", "pharmacist_inventory"), getDashboardStats);
 
-
-export default router;
+export default router; 
