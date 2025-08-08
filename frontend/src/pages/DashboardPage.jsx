@@ -141,7 +141,7 @@ const DashboardPage = () => {
             <button
               className={`px-3 py-1.5 text-sm rounded-lg ${theme.cardSecondary} ${theme.border} border ${theme.textSecondary}`}
             >
-              This Week
+              This Week is testings
             </button>
             <button
               className={`px-3 py-1.5 text-sm rounded-lg ${
