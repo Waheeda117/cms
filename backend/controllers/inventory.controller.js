@@ -1243,13 +1243,15 @@ export const getDashboardStats = async (req, res) => {
             stockTrends,
             topStockedMedicines,
             lowStockItems,
-            expiringSoonItems
+            expiringSoonItems,
+            expiredItems // New addition
         ] = await Promise.all([
             getSummaryStats(),
             getStockTrends(startDate, endDate, dateRange),
             getTopStockedMedicines(),
             getLowStockItems(),
-            getExpiringSoonItems()
+            getExpiringSoonItems(),
+            getExpiredItems() // New addition
         ]);
 
         return res.status(200).json({
@@ -1259,7 +1261,8 @@ export const getDashboardStats = async (req, res) => {
                 stockTrends,
                 topStockedMedicines,
                 lowStockItems,
-                expiringSoonItems
+                expiringSoonItems,
+                expiredItems // New addition
             }
         });
 
@@ -1273,7 +1276,6 @@ export const getDashboardStats = async (req, res) => {
     }
 };
 
-// Helper function for summary statistics
 // Helper function for summary statistics
 const getSummaryStats = async () => {
     const pipeline = [
@@ -1321,6 +1323,26 @@ const getSummaryStats = async () => {
                         },
                         0
                     ]
+                },
+                // New: Check for expired items (before today, not including today)
+                hasExpired: {
+                    $gt: [
+                        {
+                            $size: {
+                                $filter: {
+                                    input: "$batches",
+                                    cond: {
+                                        $lt: ["$this.expiryDate", { 
+                                            $dateFromString: { 
+                                                dateString: new Date().toISOString().split('T')[0] + "T00:00:00.000Z" 
+                                            }
+                                        }]
+                                    }
+                                }
+                            }
+                        },
+                        0
+                    ]
                 }
             }
         }
@@ -1331,6 +1353,7 @@ const getSummaryStats = async () => {
     const totalItems = results.length;
     const lowStockCount = results.filter(item => item.isLowStock).length;
     const nearExpiryCount = results.filter(item => item.hasNearExpiry).length;
+    const expiredCount = results.filter(item => item.hasExpired).length; // New addition
     const totalStockValue = results.reduce((sum, item) => sum + item.totalValue, 0);
 
     // Format stock value in thousands (K)
@@ -1345,6 +1368,7 @@ const getSummaryStats = async () => {
         totalItems,
         lowStock: lowStockCount,
         nearExpiry: nearExpiryCount,
+        expired: expiredCount, // New addition
         stockValue: formattedStockValue
     };
 };
@@ -1507,6 +1531,55 @@ const getExpiringSoonItems = async () => {
                     $ceil: {
                         $divide: [
                             { $subtract: ["$medicines.expiryDate", new Date()] },
+                            86400000 // milliseconds in a day
+                        ]
+                    }
+                }
+            }
+        }
+    ];
+
+    const results = await Inventory.aggregate(pipeline);
+    
+    return results.map((item, index) => ({
+        id: index + 1,
+        ...item
+    }));
+};
+
+// NEW: Helper function for expired items
+const getExpiredItems = async () => {
+    // Get start of today (00:00:00) to exclude today's expiry
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const pipeline = [
+        { $match: { isDraft: false } },
+        { $unwind: "$medicines" },
+        {
+            $match: {
+                "medicines.expiryDate": {
+                    $lt: startOfToday // Items that expired before today (not including today)
+                }
+            }
+        },
+        { $sort: { "medicines.expiryDate": -1 } }, // Sort by most recently expired first
+        { $limit: 10 },
+        {
+            $project: {
+                name: "$medicines.medicineName",
+                batch: "$batchNumber",
+                expiry: {
+                    $dateToString: {
+                        format: "%Y-%m-%d",
+                        date: "$medicines.expiryDate"
+                    }
+                },
+                quantity: "$medicines.quantity",
+                daysExpired: {
+                    $ceil: {
+                        $divide: [
+                            { $subtract: [startOfToday, "$medicines.expiryDate"] },
                             86400000 // milliseconds in a day
                         ]
                     }
