@@ -9,6 +9,7 @@ import TopStockedMedicines from "../../components/inventory/dashboard/TopStocked
 import InventoryValueDistribution from "../../components/inventory/dashboard/InventoryValueDistribution";
 import LowStockAlerts from "../../components/inventory/dashboard/LowStockAlerts";
 import ExpiringSoonTable from "../../components/inventory/dashboard/ExpiringSoonTable";
+import ExpiredItemsTable from "../../components/inventory/dashboard/ExpiredItemsTable"; // NEW IMPORT
 import { getDashboardStats } from "../../api/api";
 
 const InventoryAdminDashboard = () => {
@@ -105,6 +106,17 @@ const InventoryAdminDashboard = () => {
           data={dashboardData?.expiringSoonItems}
         />
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
+            
+        <ExpiredItemsTable
+          theme={theme}
+          data={dashboardData?.alreadyExpiredItems}
+        />
+      </div>
+
+
+
     </div>
   );
 };
