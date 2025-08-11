@@ -40,22 +40,23 @@ const UpdateUserModal = ({ isOpen, onClose, userData, onSuccess }) => {
   });
 
   // Pre-fill form data when userData changes
-  useEffect(() => {
-    if (userData) {
-      setFormData({
-        firstName: userData.firstName || "",
-        lastName: userData.lastName || "",
-        email: userData.email || "",
-        cnic: userData.cnic || "",
-        phoneNumber: userData.phoneNumber || "",
-        address: userData.address || "",
-        gender: userData.gender || "",
-        speciality: userData.speciality || [],
-        registrationNumber: userData.registrationNumber || "",
-        doctorSchedule: userData.doctorSchedule || [],
-      });
-    }
-  }, [userData]);
+useEffect(() => {
+  if (userData) {
+    setFormData({
+      firstName: userData.firstName || "",
+      lastName: userData.lastName || "",
+      email: userData.email || "",
+      cnic: userData.cnic || "",
+      phoneNumber: userData.phoneNumber || "",
+      address: userData.address || "",
+      gender: userData.gender || "",
+      // Fix: Convert array to string or use empty string
+      speciality: userData.speciality || "", // Remove the [] default
+      registrationNumber: userData.registrationNumber || "",
+      doctorSchedule: userData.doctorSchedule || [],
+    });
+  }
+}, [userData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -110,39 +111,68 @@ const UpdateUserModal = ({ isOpen, onClose, userData, onSuccess }) => {
     return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    setLoading(true);
-    setError("");
-    setSuccess("");
+  setLoading(true);
+  setError("");
+  setSuccess("");
 
-    try {
-      // Import the update function
-      const { updateUserDataByRoleAndId } = await import("../../api/api");
+  try {
+    // Filter the data based on user role to avoid sending irrelevant fields
+    let filteredFormData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      phoneNumber: formData.phoneNumber,
+      address: formData.address,
+      gender: formData.gender,
+    };
 
-      const response = await updateUserDataByRoleAndId(
-        userData.role,
-        userData._id,
-        formData
-      );
-
-      setSuccess(response.message || "Profile updated successfully");
-      setTimeout(() => {
-        onSuccess(response.user); // Pass updated user data back
-        onClose();
-        resetForm();
-      }, 1500);
-    } catch (error) {
-      setError(
-        error.response?.data?.message || "Update failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
+    // Only include email and CNIC if they have values
+    if (formData.email && formData.email.trim()) {
+      filteredFormData.email = formData.email;
     }
-  };
+    if (formData.cnic && formData.cnic.trim()) {
+      filteredFormData.cnic = formData.cnic;
+    }
+
+    // Only include doctor-specific fields for doctors
+    if (userData?.role === "doctor") {
+      if (formData.speciality && formData.speciality.trim()) {
+        filteredFormData.speciality = formData.speciality;
+      }
+      if (formData.registrationNumber && formData.registrationNumber.trim()) {
+        filteredFormData.registrationNumber = formData.registrationNumber;
+      }
+      if (formData.doctorSchedule && formData.doctorSchedule.length > 0) {
+        filteredFormData.doctorSchedule = formData.doctorSchedule;
+      }
+    }
+
+    const { updateUserDataByRoleAndId } = await import("../../api/api");
+
+    const response = await updateUserDataByRoleAndId(
+      userData.role,
+      userData._id,
+      filteredFormData // Use filtered data instead of formData
+    );
+
+    setSuccess(response.message || "Profile updated successfully");
+    setTimeout(() => {
+      onSuccess(response.user);
+      onClose();
+      resetForm();
+    }, 1500);
+  } catch (error) {
+    setError(
+      error.response?.data?.message || "Update failed. Please try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const resetForm = () => {
     setFormData({
