@@ -400,7 +400,7 @@ export const updateUserDataByRoleAndId = async (req: Request<{ role: string; id:
         const updatedData = req.body;
 
 
-        // Validate that the role is one of the role is allowed
+        // Validate that the role is one of the role is allowed is allowed
         const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory"];
         if (!validRoles.includes(role)) {
             res.status(400).json({ success: false, message: "Invalid role" });
