@@ -393,10 +393,11 @@ export const getUserDataByRoleAndId = async (req: Request<{ role: string; id: st
     }
 };
 
+
 export const updateUserDataByRoleAndId = async (req: Request<{ role: string; id: string }, {}, any>, res: Response): Promise<void> => {
     try {
         const { role, id } = req.params;
-        const updatedData = req.body;  // The new data sent in the request body
+        const updatedData = req.body;
 
         // Validate that the role is one of the allowed roles
         const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory"];
@@ -413,24 +414,122 @@ export const updateUserDataByRoleAndId = async (req: Request<{ role: string; id:
             return;
         }
 
-        // Validate fields if needed based on role
+        // Create a clean update object based on role
+        const cleanUpdateData: any = {};
+
+        // Common fields for all roles
+        if (updatedData.firstName) cleanUpdateData.firstName = updatedData.firstName;
+        if (updatedData.lastName) cleanUpdateData.lastName = updatedData.lastName;
+        if (updatedData.phoneNumber) cleanUpdateData.phoneNumber = updatedData.phoneNumber;
+        if (updatedData.address) cleanUpdateData.address = updatedData.address;
+        if (updatedData.gender) cleanUpdateData.gender = updatedData.gender;
+
+        // Optional fields - only add if they have valid values
+        if (updatedData.email && updatedData.email.trim()) {
+            cleanUpdateData.email = updatedData.email.trim();
+        }
+        if (updatedData.cnic && updatedData.cnic.trim()) {
+            cleanUpdateData.cnic = updatedData.cnic.trim();
+        }
+
+        // Role-specific fields
         if (role === "doctor") {
-            if (updatedData.speciality && !updatedData.registrationNumber) {
+            if (updatedData.speciality && updatedData.speciality.trim()) {
+                cleanUpdateData.speciality = updatedData.speciality.trim();
+            }
+            if (updatedData.registrationNumber && updatedData.registrationNumber.trim()) {
+                // Check if the registration number is already taken by another doctor
+                const existingDoctor = await User.findOne({
+                    registrationNumber: updatedData.registrationNumber.trim(),
+                    _id: { $ne: id }
+                });
+                
+                if (existingDoctor) {
+                    res.status(400).json({ 
+                        success: false, 
+                        message: "Registration number already exists for another doctor" 
+                    });
+                    return;
+                }
+                
+                cleanUpdateData.registrationNumber = updatedData.registrationNumber.trim();
+            }
+            if (updatedData.doctorSchedule && Array.isArray(updatedData.doctorSchedule)) {
+                cleanUpdateData.doctorSchedule = updatedData.doctorSchedule;
+            }
+        }
+
+        // Additional validation for doctors
+        if (role === "doctor") {
+            if (cleanUpdateData.speciality && !cleanUpdateData.registrationNumber && !user.registrationNumber) {
                 res.status(400).json({ success: false, message: "Registration number is required for doctors" });
                 return;
             }
         }
 
-        // Use findByIdAndUpdate for partial update, only the provided fields will be updated
-        const updatedUser = await User.findByIdAndUpdate(id, updatedData, { new: true, runValidators: true });
+        // Use findByIdAndUpdate with clean data
+        const updatedUser = await User.findByIdAndUpdate(
+            id, 
+            cleanUpdateData, 
+            { 
+                new: true, 
+                runValidators: true,
+                context: 'query' // This helps with conditional validation
+            }
+        ).select("-password");
 
-        // Return the updated user data
         res.status(200).json({
             success: true,
             message: `${role.charAt(0).toUpperCase() + role.slice(1)} data updated successfully`,
             user: updatedUser,
         });
-    } catch (error) {
+    } catch (error: unknown) {
+        console.error("Update error:", error);
+        
+        // Type guard for MongoDB errors
+        interface MongoError extends Error {
+            code?: number;
+            keyPattern?: Record<string, any>;
+        }
+
+        // Type guard for Mongoose validation errors
+        interface ValidationError extends Error {
+            name: string;
+            errors: Record<string, { message: string }>;
+        }
+
+        // Type guard for Mongoose cast errors
+        interface CastError extends Error {
+            name: string;
+            path: string;
+            value: any;
+        }
+
+        // Handle MongoDB duplicate key errors specifically
+        if (error && typeof error === 'object' && 'code' in error && (error as MongoError).code === 11000) {
+            const mongoError = error as MongoError;
+            const field = Object.keys(mongoError.keyPattern || {})[0];
+            const message = `${field || 'Field'} already exists. Please use a different value.`;
+            res.status(400).json({ success: false, message });
+            return;
+        }
+
+        // Handle validation errors
+        if (error && typeof error === 'object' && 'name' in error && (error as ValidationError).name === 'ValidationError') {
+            const validationError = error as ValidationError;
+            const messages = Object.values(validationError.errors).map(err => err.message);
+            res.status(400).json({ success: false, message: messages.join(', ') });
+            return;
+        }
+
+        // Handle cast errors
+        if (error && typeof error === 'object' && 'name' in error && (error as CastError).name === 'CastError') {
+            const castError = error as CastError;
+            res.status(400).json({ success: false, message: `Invalid ${castError.path}: ${castError.value}` });
+            return;
+        }
+
+        // Handle generic errors
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         res.status(500).json({ success: false, message: errorMessage });
     }

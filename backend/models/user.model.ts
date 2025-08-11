@@ -129,20 +129,34 @@ const userSchema = new Schema<IUser>(
       },
     },
 
-    // Medical related fields (for Doctors/Pharmacists/Receptionists)
     speciality: {
       type: String,
       required: function (this: IUser): boolean {
-        return this.role === "doctor"; // Only for doctors
+        return this.role === "doctor";
       },
+      validate: {
+        validator: function(v: string): boolean {
+          // Allow empty/null for non-doctors, require value for doctors
+          if (this.role !== "doctor") return true;
+          return v != null && v.trim().length > 0;
+        },
+        message: "Speciality is required for doctors"
+      }
     },
     registrationNumber: {
       type: String,
       unique: true,
-      sparse: true,
+      sparse: true, // This allows null values and prevents unique constraint issues
       required: function (this: IUser): boolean {
-        return this.role === "doctor"; // Only for doctors
+        return this.role === "doctor";
       },
+      validate: {
+        validator: function(v: string): boolean {
+          if (this.role !== "doctor") return true;
+          return v != null && v.trim().length > 0;
+        },
+        message: "Registration number is required for doctors"
+      }
     },
     doctorSchedule: {
       type: [String], // e.g., ["Monday", "Tuesday", ...]
