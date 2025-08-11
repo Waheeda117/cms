@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toLocalISODate } from "../../utils/date";
 import { motion } from "framer-motion";
 import { useTheme } from "../../hooks/useTheme";
 import {
@@ -65,7 +66,7 @@ const AddBatch = () => {
     expiryDate: "",
   });
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-    const [draftLoading, setDraftLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
 
   const dropdownRef = useRef(null);
 
@@ -93,14 +94,24 @@ const AddBatch = () => {
   };
 
   // Helper functions for date formatting
-  const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  // "YYYY-MM-DD" ko local date samajh kar DD/MM/YYYY dikhaye (UTC shift ke baghair)
+  const formatDateForDisplay = (iso) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-").map(Number);
+    const date = new Date(y, m - 1, d); // local parse
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
+
+  // ISO "YYYY-MM-DD" -> local Date object (DatePicker ke selected me use hoga)
+  const parseISOToLocalDate = (iso) => {
+    if (!iso) return null;
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  };
+
 
   const formatDateForInput = (dateString) => {
     if (!dateString) return "";
@@ -169,8 +180,8 @@ const AddBatch = () => {
     user?.role === "admin"
       ? "/admin/inventory-management"
       : user?.role === "pharmacist_inventory"
-      ? "/pharmacist_inventory/inventory-management"
-      : "/inventory-management";
+        ? "/pharmacist_inventory/inventory-management"
+        : "/inventory-management";
 
   const isMedicineFormValid = useMemo(() => {
     if (currentMedicine.medicineId === 1) {
@@ -484,7 +495,7 @@ const AddBatch = () => {
           quantity: medicine.quantity,
           price: medicine.price,
           expiryDate: medicine.expiryDate,
-          dateOfPurchase: new Date().toISOString().split("T")[0],
+          dateOfPurchase: toLocalISODate(new Date()),
           reorderLevel: 20,
         })),
       };
@@ -501,14 +512,14 @@ const AddBatch = () => {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Failed to add stock. Please try again."
+        "Failed to add stock. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
-    const handleSaveDraft = async (e) => {
+  const handleSaveDraft = async (e) => {
     e.preventDefault();
 
     setDraftLoading(true);
@@ -544,7 +555,7 @@ const AddBatch = () => {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Failed to save draft. Please try again."
+        "Failed to save draft. Please try again."
       );
     } finally {
       setDraftLoading(false);
@@ -703,13 +714,11 @@ const AddBatch = () => {
                         <li
                           key={medicine.id}
                           onClick={() => handleMedicineSelect(medicine)}
-                          className={`px-4 py-2 cursor-pointer hover:${
-                            theme.cardSecondary
-                          } ${theme.textPrimary} ${
-                            medicine.name === "MISCELLANEOUS"
+                          className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary
+                            } ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS"
                               ? "bg-yellow-50 border-l-4 border-yellow-400"
                               : ""
-                          }`}
+                            }`}
                         >
                           {medicine.name}
                         </li>
@@ -820,13 +829,11 @@ const AddBatch = () => {
                     <DatePicker
                       selected={
                         currentMedicine.expiryDate
-                          ? new Date(currentMedicine.expiryDate)
+                          ? parseISOToLocalDate(currentMedicine.expiryDate)
                           : null
                       }
                       onChange={(date) => {
-                        const isoDate = date
-                          ? date.toISOString().split("T")[0]
-                          : "";
+                        const isoDate = date ? toLocalISODate(date) : "";
                         updateCurrentMedicineField("expiryDate", isoDate);
                       }}
                       dateFormat="dd/MM/yyyy"
@@ -835,6 +842,7 @@ const AddBatch = () => {
                       className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
                       wrapperClassName="w-full"
                     />
+
                   </div>
                 </div>
               </div>
@@ -900,9 +908,8 @@ const AddBatch = () => {
                     medicines.map((medicine, index) => (
                       <tr
                         key={index}
-                        className={`${
-                          index % 2 === 0 ? theme.card : theme.cardSecondary
-                        } border-b ${theme.borderSecondary}`}
+                        className={`${index % 2 === 0 ? theme.card : theme.cardSecondary
+                          } border-b ${theme.borderSecondary}`}
                       >
                         <td className="px-4 py-3">
                           <div
@@ -971,13 +978,11 @@ const AddBatch = () => {
                             <DatePicker
                               selected={
                                 editValues.expiryDate
-                                  ? new Date(editValues.expiryDate)
+                                  ? parseISOToLocalDate(editValues.expiryDate)
                                   : null
                               }
                               onChange={(date) => {
-                                const isoDate = date
-                                  ? date.toISOString().split("T")[0]
-                                  : "";
+                                const isoDate = date ? toLocalISODate(date) : "";
                                 setEditValues((prev) => ({
                                   ...prev,
                                   expiryDate: isoDate,
@@ -988,6 +993,7 @@ const AddBatch = () => {
                               minDate={new Date()}
                               className={`w-32 px-2 py-1 text-center ${theme.input} rounded ${theme.borderSecondary} border ${theme.focus} focus:ring-1`}
                             />
+
                           ) : (
                             formatDateForDisplay(medicine.expiryDate)
                           )}
@@ -998,9 +1004,9 @@ const AddBatch = () => {
                           PKR{" "}
                           {editingIndex === index
                             ? (
-                                parseFloat(editValues.price || 0) *
-                                parseInt(editValues.quantity || 0)
-                              ).toFixed(2)
+                              parseFloat(editValues.price || 0) *
+                              parseInt(editValues.quantity || 0)
+                            ).toFixed(2)
                             : (medicine.quantity * medicine.price).toFixed(2)}
                         </td>
                         <td
@@ -1184,24 +1190,24 @@ const AddBatch = () => {
               <span>Cancel</span>
             </button>
 
-          {/* NEW: Save Draft Button */}
-        <button
-          type="button"
-          onClick={handleSaveDraft}
-          disabled={draftLoading || !canAddBatch || editingIndex !== null}
-          className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          {draftLoading ? (
-            <>
-              <Loader className="w-5 h-5 animate-spin" />
-              <span>Saving Draft...</span>
-            </>
-          ) : (
-            <>
-              <span>Save Draft</span>
-            </>
-          )}
-        </button>
+            {/* NEW: Save Draft Button */}
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={draftLoading || !canAddBatch || editingIndex !== null}
+              className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {draftLoading ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  <span>Saving Draft...</span>
+                </>
+              ) : (
+                <>
+                  <span>Save Draft</span>
+                </>
+              )}
+            </button>
 
             {/* Add Batch Button */}
             <button
