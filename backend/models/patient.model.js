@@ -1,22 +1,6 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose from "mongoose";
 
-export interface IPatient extends Document {
-  name: string;
-  email: string;
-  gender: 'male' | 'female' | 'other';
-  dateOfBirth: Date;
-  contactNumber: string;
-  address: string;
-  cnic: string;
-  chiefComplaint: string;
-  medicalHistory?: string;
-  prescriptions: mongoose.Types.ObjectId[];
-  appointments: mongoose.Types.ObjectId[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const patientSchema = new Schema<IPatient>(
+const patientSchema = new mongoose.Schema(
     {
         name: {
             type: String,
@@ -27,7 +11,7 @@ const patientSchema = new Schema<IPatient>(
             required: true,
             unique: true,
             validate: {
-                validator: function(v: string): boolean {
+                validator: function(v) {
                     // Basic email validation regex
                     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
                 },
@@ -56,7 +40,7 @@ const patientSchema = new Schema<IPatient>(
             required: true,
             unique: true,
             validate: {
-                validator: function(v: string): boolean {
+                validator: function(v) {
                     // CNIC format: 12345-1234567-1 (13 digits with dashes)
                     return /^\d{5}-\d{7}-\d{1}$/.test(v);
                 },
@@ -74,15 +58,15 @@ const patientSchema = new Schema<IPatient>(
             required: false,
         },
         prescriptions: [{
-            type: Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.ObjectId,
             ref: 'Prescription',
         }],
         appointments: [{
-            type: Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.ObjectId,
             ref: 'Appointment',
         }]
     },
     { timestamps: true }
 );
 
-export const Patient = mongoose.model<IPatient>("Patient", patientSchema); 
+export const Patient = mongoose.model("Patient", patientSchema);

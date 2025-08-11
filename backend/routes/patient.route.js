@@ -22,4 +22,4 @@ router.get("/:id", getPatientById);
 router.patch("/:id", updatePatientById);
 router.delete("/:id", deletePatientById);
 
-export default router; 
+export default router;
