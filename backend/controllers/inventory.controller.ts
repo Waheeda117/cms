@@ -1329,13 +1329,15 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
             stockTrends,
             topStockedMedicines,
             lowStockItems,
-            expiringSoonItems
+            expiringSoonItems,
+            alreadyExpiredItems
         ] = await Promise.all([
             getSummaryStats(),
             getStockTrends(startDate, endDate, dateRange as string),
             getTopStockedMedicines(),
             getLowStockItems(),
-            getExpiringSoonItems()
+            getExpiringSoonItems(),
+            getAlreadyExpiredItems()
         ]);
 
         res.status(200).json({
@@ -1345,7 +1347,8 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
                 stockTrends,
                 topStockedMedicines,
                 lowStockItems,
-                expiringSoonItems
+                expiringSoonItems,
+                alreadyExpiredItems
             }
         });
 
@@ -1392,14 +1395,29 @@ const getSummaryStats = async () => {
                                     input: "$batches",
                                     cond: {
                                         $and: [
-                                            { $gte: ["$$this.expiryDate", new Date()] }, // Fixed: $$this
+                                            { $gte: ["$$this.expiryDate", new Date()] },
                                             {
                                                 $lte: [
-                                                    "$$this.expiryDate", // Fixed: $$this
+                                                    "$$this.expiryDate",
                                                     { $dateAdd: { startDate: new Date(), unit: "day", amount: 10 } }
                                                 ]
                                             }
                                         ]
+                                    }
+                                }
+                            }
+                        },
+                        0
+                    ]
+                },
+                hasAlreadyExpired: {
+                    $gt: [
+                        {
+                            $size: {
+                                $filter: {
+                                    input: "$batches",
+                                    cond: {
+                                        $lt: ["$$this.expiryDate", new Date()]
                                     }
                                 }
                             }
@@ -1416,6 +1434,7 @@ const getSummaryStats = async () => {
     const totalItems = results.length;
     const lowStockCount = results.filter(item => item.isLowStock).length;
     const nearExpiryCount = results.filter(item => item.hasNearExpiry).length;
+    const alreadyExpiredCount = results.filter(item => item.hasAlreadyExpired).length;
     const totalStockValue = results.reduce((sum, item) => sum + item.totalValue, 0);
 
     // Format stock value in thousands (K)
@@ -1430,6 +1449,7 @@ const getSummaryStats = async () => {
         totalItems,
         lowStock: lowStockCount,
         nearExpiry: nearExpiryCount,
+        alreadyExpired: alreadyExpiredCount,
         stockValue: formattedStockValue
     };
 };
@@ -1495,7 +1515,7 @@ const getStockTrends = async (startDate: Date, endDate: Date, dateRange: string)
 
 // Helper function for top stocked medicines
 const getTopStockedMedicines = async () => {
-    const pipeline: PipelineStage[] = [ // Add type annotation here
+    const pipeline: PipelineStage[] = [
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
@@ -1510,7 +1530,7 @@ const getTopStockedMedicines = async () => {
             $project: {
                 medicine: "$_id",
                 stock: "$totalStock",
-                _id: 0 // Exclude the original _id field
+                _id: 0
             }
         }
     ];
@@ -1591,6 +1611,55 @@ const getExpiringSoonItems = async () => {
                     $ceil: {
                         $divide: [
                             { $subtract: ["$medicines.expiryDate", new Date()] },
+                            86400000 // milliseconds in a day
+                        ]
+                    }
+                }
+            }
+        }
+    ];
+    
+    const results = await Inventory.aggregate(pipeline);
+    
+    return results.map((item: any, index: number) => ({
+        id: index + 1,
+        ...item
+    }));
+};
+
+// NEW: Helper function for already expired items
+const getAlreadyExpiredItems = async () => {
+    const today = new Date();
+    // Set time to start of today to ensure we only get items that expired before today
+    today.setHours(0, 0, 0, 0);
+    
+    const pipeline: PipelineStage[] = [
+        { $match: { isDraft: false } },
+        { $unwind: "$medicines" },
+        {
+            $match: {
+                "medicines.expiryDate": {
+                    $lt: today // Only items that expired before today (not including today)
+                }
+            }
+        },
+        { $sort: { "medicines.expiryDate": -1 } }, // Most recently expired first
+        { $limit: 10 },
+        {
+            $project: {
+                name: "$medicines.medicineName",
+                batch: "$batchNumber",
+                expiry: {
+                    $dateToString: {
+                        format: "%Y-%m-%d",
+                        date: "$medicines.expiryDate"
+                    }
+                },
+                quantity: "$medicines.quantity",
+                daysExpired: {
+                    $ceil: {
+                        $divide: [
+                            { $subtract: [today, "$medicines.expiryDate"] },
                             86400000 // milliseconds in a day
                         ]
                     }
