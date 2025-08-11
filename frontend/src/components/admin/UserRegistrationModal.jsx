@@ -136,58 +136,69 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
     return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+///aaa/a/a
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    setLoading(true);
-    setError("");
-    setSuccess("");
+  setLoading(true);
+  setError("");
+  setSuccess("");
 
-    try {
-      let response;
-      const submitData = { ...formData };
+  try {
+    let response;
+    const submitData = { ...formData };
 
-      switch (role) {
-        case "doctor":
-          response = await registerDoctor(submitData);
-          break;
-        case "receptionist":
-          response = await registerReceptionist(submitData);
-          break;
-        case "pharmacist_dispenser":
-          response = await registerPharmacistDispenser(submitData);
-          break;
-        case "pharmacist_inventory":
-          response = await registerPharmacistInventory(submitData);
-          break;
-        default:
-          throw new Error("Invalid role");
-      }
+    switch (role) {
+      case "doctor":
+        response = await registerDoctor(submitData);
+        break;
+      case "receptionist":
+        response = await registerReceptionist(submitData);
+        break;
+      case "pharmacist_dispenser":
+        response = await registerPharmacistDispenser(submitData);
+        break;
+      case "pharmacist_inventory":
+        response = await registerPharmacistInventory(submitData);
+        break;
+      default:
+        throw new Error("Invalid role");
+    }
 
-      setSuccess(response.message);
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-        resetForm();
-      }, 1500);
+    // Message set (fallback rakha hai)
+    setSuccess((response && response.message) ? response.message : "User registered successfully");
 
+    // API se naya user safely nikaal lo (shape flexible rakhi hai)
+    const createdUser =
+      (response && response.user) ||
+      (response && response.data && response.data.user) ||
+      null;
+
+    // Credentials modal ke liye username — API se ya fallback (displayUsername tumhari file me pehle se defined hai)
     setNewUserCredentials({
-      username: response.user.username,
+      username: (createdUser && createdUser.username) || displayUsername || "",
       password: "abc12345",
     });
-    
     setShowCredentialsModal(true);
-    } catch (error) {
-      setError(
-        error.response?.data?.message ||
-          "Registration failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+
+    // Parent ko notify (list refetch) + modal close + form reset
+    // setTimeout(() => {
+    //   if (onSuccess) onSuccess(createdUser);
+    //   if (onClose) onClose();
+    //   resetForm();
+    // }, 1500);
+  } catch (err) {
+    setError(
+      (err && err.response && err.response.data && err.response.data.message) ||
+        "Registration failed. Please try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const resetForm = () => {
     setFormData({
@@ -213,13 +224,14 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
     onClose();
   };
 
-  const handleCredentialsClose = () => {
-    setShowCredentialsModal(false);
-    resetForm();
-    onClose();
-    // Refresh user list
-    onSuccess();
-  };
+  //a//a//aa
+ const handleCredentialsClose = () => {
+  setShowCredentialsModal(false);
+  resetForm();
+  onClose?.();             // parent modal band
+  window.location.reload(); // ✅ ab close par page reload hoga -> list update
+};
+
 
   const getRoleConfig = () => {
     const configs = {
