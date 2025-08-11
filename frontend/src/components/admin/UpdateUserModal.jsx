@@ -167,7 +167,7 @@ const handleSubmit = async (e) => {
     }, 1500);
   } catch (error) {
     setError(
-      error.response?.data?.message || "Update failed. Please try again."
+      error.response?.data?.message || "Update failed. Please try once again."
     );
   } finally {
     setLoading(false);
