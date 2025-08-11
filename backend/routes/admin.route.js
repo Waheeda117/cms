@@ -28,4 +28,4 @@ router.get("/:role/:id", getUserDataByRoleAndId);
 router.patch("/:role/:id", updateUserDataByRoleAndId);
 router.delete("/:role/:id", deleteUserDataByRoleAndId);
 
-export default router; 
+export default router;

@@ -1,9 +1,0 @@
-{
-  "watch": ["backend"],
-  "ext": "ts,js,json",
-  "ignore": ["backend/dist", "node_modules"],
-  "exec": "ts-node-dev --respawn --transpile-only --esm backend/index.ts",
-  "env": {
-    "NODE_ENV": "development"
-  }
-} 

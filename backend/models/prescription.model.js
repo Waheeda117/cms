@@ -1,31 +1,14 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose from "mongoose";
 
-export interface IMedicine {
-  name: string;
-  dosage: string;
-  quantity: number;
-}
-
-export interface IPrescription extends Document {
-  patient: mongoose.Types.ObjectId;
-  doctor: mongoose.Types.ObjectId;
-  medicines: IMedicine[];
-  issuedDate: Date;
-  pharmacyStatus: 'pending' | 'fulfilled' | 'rejected';
-  rejectionReason?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const prescriptionSchema = new Schema<IPrescription>(
+const prescriptionSchema = new mongoose.Schema(
     {
         patient: {
-            type: Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.ObjectId,
             ref: 'Patient',
             required: true,
         },
         doctor: {
-            type: Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
             required: true,
         },
@@ -46,7 +29,7 @@ const prescriptionSchema = new Schema<IPrescription>(
         },
         rejectionReason: {
             type: String,
-            required: function(this: IPrescription): boolean {
+            required: function() {
                 return this.pharmacyStatus === 'rejected';
             },
         }
@@ -54,4 +37,4 @@ const prescriptionSchema = new Schema<IPrescription>(
     { timestamps: true }
 );
 
-export const Prescription = mongoose.model<IPrescription>("Prescription", prescriptionSchema); 
+export const Prescription = mongoose.model("Prescription", prescriptionSchema);

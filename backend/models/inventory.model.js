@@ -1,35 +1,7 @@
-import mongoose, { Document, Schema } from "mongoose";
-
-// Interface for individual medicines within a batch
-export interface IBatchMedicine {
-  medicineId: number;
-  medicineName: string;
-  quantity: number;
-  price: number; // Selling price per unit
-  expiryDate: Date;
-  dateOfPurchase: Date;
-  reorderLevel: number;
-  totalAmount: number;
-}
-
-// Main inventory interface for batch management
-export interface IInventory extends Document {
-  batchNumber: string;
-  billID: string;
-  medicines: IBatchMedicine[];
-  overallPrice: number;
-  miscellaneousAmount: number;
-  attachments: string[]; // Array of Cloudinary URLs
-  isDraft: boolean;
-  draftNote: string;
-  finalizedAt?: Date;
-  createdBy: mongoose.Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import mongoose from "mongoose";
 
 // Schema for individual medicines within a batch
-const batchMedicineSchema = new Schema<IBatchMedicine>({
+const batchMedicineSchema = new mongoose.Schema({
   medicineId: {
     type: Number,
     required: true,
@@ -69,7 +41,7 @@ const batchMedicineSchema = new Schema<IBatchMedicine>({
 }, { _id: true });
 
 // Main inventory schema for batch management
-const inventorySchema = new Schema<IInventory>(
+const inventorySchema = new mongoose.Schema(
   {
     batchNumber: {
       type: String,
@@ -108,7 +80,7 @@ const inventorySchema = new Schema<IInventory>(
       default: null,
     },
     createdBy: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     }
@@ -117,11 +89,11 @@ const inventorySchema = new Schema<IInventory>(
 );
 
 // Create indexes for efficient querying
-// inventorySchema.index({ batchNumber: 1 });
-inventorySchema.index({ billID: 1 }); // Added missing index
+inventorySchema.index({ batchNumber: 1 });
+inventorySchema.index({ billID: 1 });
 inventorySchema.index({ "medicines.medicineId": 1 });
 inventorySchema.index({ "medicines.medicineName": 1 });
 inventorySchema.index({ createdAt: -1 });
 inventorySchema.index({ isDraft: 1 }); // New index for draft filtering
 
-export const Inventory = mongoose.model<IInventory>("Inventory", inventorySchema);
+export const Inventory = mongoose.model("Inventory", inventorySchema);

@@ -1,10 +1,8 @@
 import bcryptjs from "bcryptjs";
-import { Request, Response } from "express";
-import { User, IUser } from "../models/user.model.js";
-import { AuthenticatedRequest } from "../types/index.js";
+import { User } from "../models/user.model.js";
 
 // Helper function to generate unique username
-const generateUniqueUsername = async (firstName: string, lastName: string): Promise<string> => {
+const generateUniqueUsername = async (firstName, lastName) => {
   const baseUsername = firstName.charAt(0).toLowerCase() + lastName.toLowerCase();
   let username = baseUsername;
   let counter = 1;
@@ -18,32 +16,7 @@ const generateUniqueUsername = async (firstName: string, lastName: string): Prom
   return username;
 };
 
-interface DoctorRegistrationData {
-  email?: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  cnic?: string;
-  phoneNumber: string;
-  address: string;
-  gender: 'male' | 'female' | 'other';
-  speciality: string;
-  registrationNumber: string;
-  doctorSchedule: string[];
-}
-
-interface UserRegistrationData {
-  email?: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  cnic?: string;
-  phoneNumber: string;
-  address: string;
-  gender: 'male' | 'female' | 'other';
-}
-
-export const registerDoctorFromAdmin = async (req: Request<{}, {}, DoctorRegistrationData>, res: Response): Promise<void> => {
+export const registerDoctorFromAdmin = async (req, res) => {
     try {
         const { 
             email, 
@@ -61,20 +34,18 @@ export const registerDoctorFromAdmin = async (req: Request<{}, {}, DoctorRegistr
 
         // Validate required fields for doctor
         if (!firstName || !lastName || !password || !phoneNumber || !address || !gender || !speciality || !registrationNumber || !doctorSchedule) {
-            res.status(400).json({ 
+            return res.status(400).json({ 
                 success: false, 
                 message: "All required fields must be provided for doctor registration" 
             });
-            return;
         }
 
         // Validate CNIC format if provided
         if (cnic && !/^\d{5}-\d{7}-\d{1}$/.test(cnic)) {
-            res.status(400).json({ 
+            return res.status(400).json({ 
                 success: false, 
                 message: "CNIC must be in format: 12345-1234567-1" 
             });
-            return;
         }
 
         // Generate unique username
@@ -108,15 +79,14 @@ export const registerDoctorFromAdmin = async (req: Request<{}, {}, DoctorRegistr
         res.status(201).json({
             success: true,
             message: "Doctor registered successfully",
-            user: { ...doctor.toObject(), password: undefined }
+            user: { ...doctor._doc, password: undefined }
         });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        res.status(400).json({ success: false, message: errorMessage });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
-export const registerReceptionistFromAdmin = async (req: Request<{}, {}, UserRegistrationData>, res: Response): Promise<void> => {
+export const registerReceptionistFromAdmin = async (req, res) => {
     try {
         const { 
             email, 
@@ -131,20 +101,18 @@ export const registerReceptionistFromAdmin = async (req: Request<{}, {}, UserReg
 
         // Validate required fields
         if (!firstName || !lastName || !password || !phoneNumber || !address || !gender) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "All required fields must be provided for receptionist registration"
             });
-            return;
         }
 
         // CNIC validation (optional)
         if (cnic && !/^\d{5}-\d{7}-\d{1}$/.test(cnic)) {
-            res.status(400).json({ 
+            return res.status(400).json({ 
                 success: false, 
                 message: "CNIC must be in format: 12345-1234567-1" 
             });
-            return;
         }
 
         // Generate unique username
@@ -175,15 +143,15 @@ export const registerReceptionistFromAdmin = async (req: Request<{}, {}, UserReg
         res.status(201).json({
             success: true,
             message: "Receptionist registered successfully",
-            user: { ...receptionist.toObject(), password: undefined }
+            user: { ...receptionist._doc, password: undefined }
         });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        res.status(400).json({ success: false, message: errorMessage });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
-export const registerPharmacistDispenserFromAdmin = async (req: Request<{}, {}, UserRegistrationData>, res: Response): Promise<void> => {
+
+export const registerPharmacistDispenserFromAdmin = async (req, res) => {
     try {
         const { 
             email, 
@@ -198,20 +166,18 @@ export const registerPharmacistDispenserFromAdmin = async (req: Request<{}, {}, 
 
         // Validate required fields
         if (!firstName || !lastName || !password || !phoneNumber || !address || !gender) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "All required fields must be provided for pharmacist_dispenser registration"
             });
-            return;
         }
 
         // CNIC validation (optional)
         if (cnic && !/^\d{5}-\d{7}-\d{1}$/.test(cnic)) {
-            res.status(400).json({ 
+            return res.status(400).json({ 
                 success: false, 
                 message: "CNIC must be in format: 12345-1234567-1" 
             });
-            return;
         }
 
         // Generate unique username
@@ -241,16 +207,17 @@ export const registerPharmacistDispenserFromAdmin = async (req: Request<{}, {}, 
 
         res.status(201).json({
             success: true,
-            message: "Pharmacist Dispenser registered successfully",
-            user: { ...pharmacistDispenser.toObject(), password: undefined }
+            message: "Pharmacist dispenser registered successfully",
+            user: { ...pharmacistDispenser._doc, password: undefined }
         });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        res.status(400).json({ success: false, message: errorMessage });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
-export const registerPharmacistInventoryFromAdmin = async (req: Request<{}, {}, UserRegistrationData>, res: Response): Promise<void> => {
+
+
+export const registerPharmacistInventoryFromAdmin = async (req, res) => {
     try {
         const { 
             email, 
@@ -265,20 +232,18 @@ export const registerPharmacistInventoryFromAdmin = async (req: Request<{}, {}, 
 
         // Validate required fields
         if (!firstName || !lastName || !password || !phoneNumber || !address || !gender) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "All required fields must be provided for pharmacist_inventory registration"
             });
-            return;
         }
 
         // CNIC validation (optional)
         if (cnic && !/^\d{5}-\d{7}-\d{1}$/.test(cnic)) {
-            res.status(400).json({ 
+            return res.status(400).json({ 
                 success: false, 
                 message: "CNIC must be in format: 12345-1234567-1" 
             });
-            return;
         }
 
         // Generate unique username
@@ -308,27 +273,25 @@ export const registerPharmacistInventoryFromAdmin = async (req: Request<{}, {}, 
 
         res.status(201).json({
             success: true,
-            message: "Pharmacist Inventory registered successfully",
-            user: { ...pharmacistInventory.toObject(), password: undefined }
+            message: "Pharmacist inventory registered successfully",
+            user: { ...pharmacistInventory._doc, password: undefined }
         });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        res.status(400).json({ success: false, message: errorMessage });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
-export const getAllUsersData = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getAllUsersData = async (req, res) => {
     try {
         // Fetch all users, excluding passwords
         const users = await User.find({}, { password: 0 });
 
         if (!users || users.length === 0) {
-            res.status(404).json({ success: false, message: "No users found" });
-            return;
+            return res.status(404).json({ success: false, message: "No users found" });
         }
 
         // Create summaries for each role
-        const roleSummary: Record<string, number> = {
+        const roleSummary = {
             admin: 0,
             doctor: 0,
             receptionist: 0,
@@ -339,7 +302,7 @@ export const getAllUsersData = async (req: AuthenticatedRequest, res: Response):
         // Populate the role counts
         users.forEach(user => {
             if (roleSummary[user.role] !== undefined) {
-                roleSummary[user.role] = (roleSummary[user.role] || 0) + 1;
+                roleSummary[user.role]++;
             }
         });
 
@@ -357,28 +320,25 @@ export const getAllUsersData = async (req: AuthenticatedRequest, res: Response):
 
         res.status(200).json(response);
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        res.status(400).json({ success: false, message: errorMessage });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
-export const getUserDataByRoleAndId = async (req: Request<{ role: string; id: string }>, res: Response): Promise<void> => {
+export const getUserDataByRoleAndId = async (req, res) => {
     try {
         const { role, id } = req.params;
 
         // Validate that the role is one of the allowed roles
         const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory"];
         if (!validRoles.includes(role)) {
-            res.status(400).json({ success: false, message: "Invalid role" });
-            return;
+            return res.status(400).json({ success: false, message: "Invalid role" });
         }
 
         // Find the user by role and ID
         const user = await User.findOne({ _id: id, role: role }).select("-password");  // Exclude password
 
         if (!user) {
-            res.status(404).json({ success: false, message: `${role} not found` });
-            return;
+            return res.status(404).json({ success: false, message: `${role} not found` });
         }
 
         // Return the found user data
@@ -388,170 +348,66 @@ export const getUserDataByRoleAndId = async (req: Request<{ role: string; id: st
             user: user,
         });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        res.status(500).json({ success: false, message: errorMessage });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
 
-export const updateUserDataByRoleAndId = async (req: Request<{ role: string; id: string }, {}, any>, res: Response): Promise<void> => {
+export const updateUserDataByRoleAndId = async (req, res) => {
     try {
         const { role, id } = req.params;
-        const updatedData = req.body;
+        const updatedData = req.body;  // The new data sent in the request body
 
         // Validate that the role is one of the allowed roles
         const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory"];
         if (!validRoles.includes(role)) {
-            res.status(400).json({ success: false, message: "Invalid role" });
-            return;
+            return res.status(400).json({ success: false, message: "Invalid role" });
         }
 
         // Find the user by role and ID
         const user = await User.findOne({ _id: id, role: role });
 
         if (!user) {
-            res.status(404).json({ success: false, message: `${role.charAt(0).toUpperCase() + role.slice(1)} not found` });
-            return;
+            return res.status(404).json({ success: false, message: `${role.charAt(0).toUpperCase() + role.slice(1)} not found` });
         }
 
-        // Create a clean update object based on role
-        const cleanUpdateData: any = {};
-
-        // Common fields for all roles
-        if (updatedData.firstName) cleanUpdateData.firstName = updatedData.firstName;
-        if (updatedData.lastName) cleanUpdateData.lastName = updatedData.lastName;
-        if (updatedData.phoneNumber) cleanUpdateData.phoneNumber = updatedData.phoneNumber;
-        if (updatedData.address) cleanUpdateData.address = updatedData.address;
-        if (updatedData.gender) cleanUpdateData.gender = updatedData.gender;
-
-        // Optional fields - only add if they have valid values
-        if (updatedData.email && updatedData.email.trim()) {
-            cleanUpdateData.email = updatedData.email.trim();
-        }
-        if (updatedData.cnic && updatedData.cnic.trim()) {
-            cleanUpdateData.cnic = updatedData.cnic.trim();
-        }
-
-        // Role-specific fields
+        // Validate fields if needed based on role
         if (role === "doctor") {
-            if (updatedData.speciality && updatedData.speciality.trim()) {
-                cleanUpdateData.speciality = updatedData.speciality.trim();
-            }
-            if (updatedData.registrationNumber && updatedData.registrationNumber.trim()) {
-                // Check if the registration number is already taken by another doctor
-                const existingDoctor = await User.findOne({
-                    registrationNumber: updatedData.registrationNumber.trim(),
-                    _id: { $ne: id }
-                });
-                
-                if (existingDoctor) {
-                    res.status(400).json({ 
-                        success: false, 
-                        message: "Registration number already exists for another doctor" 
-                    });
-                    return;
-                }
-                
-                cleanUpdateData.registrationNumber = updatedData.registrationNumber.trim();
-            }
-            if (updatedData.doctorSchedule && Array.isArray(updatedData.doctorSchedule)) {
-                cleanUpdateData.doctorSchedule = updatedData.doctorSchedule;
+            if (updatedData.speciality && !updatedData.registrationNumber) {
+                return res.status(400).json({ success: false, message: "Registration number is required for doctors" });
             }
         }
 
-        // Additional validation for doctors
-        if (role === "doctor") {
-            if (cleanUpdateData.speciality && !cleanUpdateData.registrationNumber && !user.registrationNumber) {
-                res.status(400).json({ success: false, message: "Registration number is required for doctors" });
-                return;
-            }
-        }
+        // Use findByIdAndUpdate for partial update, only the provided fields will be updated
+        const updatedUser = await User.findByIdAndUpdate(id, updatedData, { new: true, runValidators: true });
 
-        // Use findByIdAndUpdate with clean data
-        const updatedUser = await User.findByIdAndUpdate(
-            id, 
-            cleanUpdateData, 
-            { 
-                new: true, 
-                runValidators: true,
-                context: 'query' // This helps with conditional validation
-            }
-        ).select("-password");
-
+        // Return the updated user data
         res.status(200).json({
             success: true,
             message: `${role.charAt(0).toUpperCase() + role.slice(1)} data updated successfully`,
             user: updatedUser,
         });
-    } catch (error: unknown) {
-        console.error("Update error:", error);
-        
-        // Type guard for MongoDB errors
-        interface MongoError extends Error {
-            code?: number;
-            keyPattern?: Record<string, any>;
-        }
-
-        // Type guard for Mongoose validation errors
-        interface ValidationError extends Error {
-            name: string;
-            errors: Record<string, { message: string }>;
-        }
-
-        // Type guard for Mongoose cast errors
-        interface CastError extends Error {
-            name: string;
-            path: string;
-            value: any;
-        }
-
-        // Handle MongoDB duplicate key errors specifically
-        if (error && typeof error === 'object' && 'code' in error && (error as MongoError).code === 11000) {
-            const mongoError = error as MongoError;
-            const field = Object.keys(mongoError.keyPattern || {})[0];
-            const message = `${field || 'Field'} already exists. Please use a different value.`;
-            res.status(400).json({ success: false, message });
-            return;
-        }
-
-        // Handle validation errors
-        if (error && typeof error === 'object' && 'name' in error && (error as ValidationError).name === 'ValidationError') {
-            const validationError = error as ValidationError;
-            const messages = Object.values(validationError.errors).map(err => err.message);
-            res.status(400).json({ success: false, message: messages.join(', ') });
-            return;
-        }
-
-        // Handle cast errors
-        if (error && typeof error === 'object' && 'name' in error && (error as CastError).name === 'CastError') {
-            const castError = error as CastError;
-            res.status(400).json({ success: false, message: `Invalid ${castError.path}: ${castError.value}` });
-            return;
-        }
-
-        // Handle generic errors
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        res.status(500).json({ success: false, message: errorMessage });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
-export const deleteUserDataByRoleAndId = async (req: Request<{ role: string; id: string }>, res: Response): Promise<void> => {
+
+export const deleteUserDataByRoleAndId = async (req, res) => {
     try {
         const { role, id } = req.params;
 
         // Validate that the role is one of the allowed roles
         const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory"];
         if (!validRoles.includes(role)) {
-            res.status(400).json({ success: false, message: "Invalid role" });
-            return;
+            return res.status(400).json({ success: false, message: "Invalid role" });
         }
 
         // Find and delete the user by role and ID
         const user = await User.findOneAndDelete({ _id: id, role: role });
 
         if (!user) {
-            res.status(404).json({ success: false, message: `${role.charAt(0).toUpperCase() + role.slice(1)} not found` });
-            return;
+            return res.status(404).json({ success: false, message: `${role.charAt(0).toUpperCase() + role.slice(1)} not found` });
         }
 
         // Return a success response
@@ -560,7 +416,6 @@ export const deleteUserDataByRoleAndId = async (req: Request<{ role: string; id:
             message: `${role.charAt(0).toUpperCase() + role.slice(1)} deleted successfully`,
         });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        res.status(500).json({ success: false, message: errorMessage });
+        res.status(500).json({ success: false, message: error.message });
     }
-}; 
+};

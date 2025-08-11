@@ -1,13 +1,12 @@
+
 import bcryptjs from "bcryptjs";
 import crypto from "crypto";
-import { Request, Response } from "express";
 
 import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js";
-import { User, IUser } from "../models/user.model.js";
-import { AuthenticatedRequest, ILoginRequest, IRegisterRequest, IChangePasswordRequest, IResetPasswordRequest } from "../types/index.js";
+import { User } from "../models/user.model.js";
 
 // Helper function to generate unique username
-const generateUniqueUsername = async (firstName: string, lastName: string): Promise<string> => {
+const generateUniqueUsername = async (firstName, lastName) => {
 	const baseUsername = `${firstName.charAt(0).toLowerCase()}${lastName.toLowerCase()}`;
 	
 	// Check if base username exists
@@ -22,7 +21,7 @@ const generateUniqueUsername = async (firstName: string, lastName: string): Prom
 	return username;
 };
 
-export const signup = async (req: Request<{}, {}, IRegisterRequest>, res: Response): Promise<void> => {
+export const signup = async (req, res) => {
 	const { email, password, firstName, lastName, role, cnic } = req.body;
 
 	try {
@@ -33,22 +32,20 @@ export const signup = async (req: Request<{}, {}, IRegisterRequest>, res: Respon
 		// Only allow admin role for signup
 		const validRoles = ["admin"];
 		if (role && !validRoles.includes(role)) {
-			res.status(400).json({ 
+			return res.status(400).json({ 
 				success: false, 
 				message: "Only admin role can be created through signup" 
 			});
-			return;
 		}
 
 		// Validate CNIC format if provided
 		if (cnic) {
 			const cnicRegex = /^\d{5}-\d{7}-\d{1}$/;
 			if (!cnicRegex.test(cnic)) {
-				res.status(400).json({ 
+				return res.status(400).json({ 
 					success: false, 
 					message: "CNIC must be in format: 12345-1234567-1" 
 				});
-				return;
 			}
 		}
 
@@ -73,7 +70,7 @@ export const signup = async (req: Request<{}, {}, IRegisterRequest>, res: Respon
 		await user.save();
 
 		// jwt
-		generateTokenAndSetCookie(res, user._id.toString());
+		generateTokenAndSetCookie(res, user._id);
 
 		// await sendVerificationEmail(user.email, verificationToken);
 
@@ -81,37 +78,33 @@ export const signup = async (req: Request<{}, {}, IRegisterRequest>, res: Respon
 			success: true,
 			message: "Admin user created successfully",
 			user: {
-				...user.toObject(),
+				...user._doc,
 				password: undefined,
 			},
 		});
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-		res.status(400).json({ success: false, message: errorMessage });
+		res.status(400).json({ success: false, message: error.message });
 	}
 };
 
-export const login = async (req: Request<{}, {}, ILoginRequest>, res: Response): Promise<void> => {
+export const login = async (req, res) => {
 	const { username, password } = req.body; // Changed from email to username
 	try {
 		if (!username || !password) {
-			res.status(400).json({ success: false, message: "Username and password are required" });
-			return;
+			return res.status(400).json({ success: false, message: "Username and password are required" });
 		}
 
 		const user = await User.findOne({ username });
 		if (!user) {
-			res.status(400).json({ success: false, message: "Invalid credentials" });
-			return;
+			return res.status(400).json({ success: false, message: "Invalid credentials" });
 		}
 		
 		const isPasswordValid = await bcryptjs.compare(password, user.password);
 		if (!isPasswordValid) {
-			res.status(400).json({ success: false, message: "Invalid credentials" });
-			return;
+			return res.status(400).json({ success: false, message: "Invalid credentials" });
 		}
 
-		generateTokenAndSetCookie(res, user._id.toString());
+		generateTokenAndSetCookie(res, user._id);
 
 		user.lastLogin = new Date();
 		await user.save();
@@ -120,71 +113,67 @@ export const login = async (req: Request<{}, {}, ILoginRequest>, res: Response):
 			success: true,
 			message: "Logged in successfully",
 			user: {
-				...user.toObject(),
+				...user._doc,
 				password: undefined,
 			},
 		});
 	} catch (error) {
 		console.log("Error in login ", error);
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-		res.status(400).json({ success: false, message: errorMessage });
+		res.status(400).json({ success: false, message: error.message });
 	}
 };
 
-export const logout = async (req: Request, res: Response): Promise<void> => {
+
+export const logout = async (req, res) => {
 	res.clearCookie("token");
 	res.status(200).json({ success: true, message: "Logged out successfully" });
 };
 
-export const checkAuth = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const checkAuth = async (req, res) => {
 	try {
-		const user = await User.findById((req as any).userId).select("-password");
+		const user = await User.findById(req.userId).select("-password");
 		if (!user) {
-			res.status(400).json({ success: false, message: "User not found" });
-			return;
+			return res.status(400).json({ success: false, message: "User not found" });
 		}
 
 		res.status(200).json({ success: true, user });
 	} catch (error) {
 		console.log("Error in checkAuth ", error);
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-		res.status(400).json({ success: false, message: errorMessage });
+		res.status(400).json({ success: false, message: error.message });
 	}
 };
 
+
 // Update password
-export const updatePassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const updatePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         
         // Validate that both current and new passwords are provided
         if (!currentPassword || !newPassword) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "Both current and new passwords are required"
             });
-            return;
         }
 
         // Find the user by the ID from the JWT token (req.userId)
-        const user = await User.findById((req as any).userId);
+        const user = await User.findById(req.userId);
 
         if (!user) {
-            res.status(404).json({
+            return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
-            return;
         }
 
         // Check if the current password is correct
         const isPasswordValid = await bcryptjs.compare(currentPassword, user.password);
         if (!isPasswordValid) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "Current password is incorrect"
             });
-            return;
         }
 
         // Hash the new password
@@ -210,38 +199,36 @@ export const updatePassword = async (req: AuthenticatedRequest, res: Response): 
     }
 };
 
+
 // Reset password (admin only)
-export const resetPassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const resetPassword = async (req, res) => {
     try {
         const { userId } = req.body;
         
         // Validate that userId is provided
         if (!userId) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "User ID is required"
             });
-            return;
         }
 
         // Find the user to reset password for
         const userToReset = await User.findById(userId);
 
         if (!userToReset) {
-            res.status(404).json({
+            return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
-            return;
         }
 
         // Prevent admin from resetting another admin's password
         if (userToReset.role === "admin") {
-            res.status(403).json({
+            return res.status(403).json({
                 success: false,
                 message: "Cannot reset password for admin users"
             });
-            return;
         }
 
         // Set default password "abc12345"
@@ -264,4 +251,4 @@ export const resetPassword = async (req: AuthenticatedRequest, res: Response): P
             message: "Server error while resetting password"
         });
     }
-}; 
+};

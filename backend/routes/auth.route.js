@@ -12,6 +12,7 @@ import { authorizeRoles } from "../middleware/roleAuth.js";
 
 const router = express.Router();
 
+
 router.get("/check-auth", verifyToken, checkAuth);
 
 router.post("/signup", signup);
@@ -21,4 +22,4 @@ router.post("/logout", logout);
 router.post("/update-password", verifyToken, updatePassword);
 router.post("/reset-password", verifyToken, authorizeRoles("admin"), resetPassword);
 
-export default router; 
+export default router;
