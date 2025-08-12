@@ -69,18 +69,13 @@ const AllUsers = () => {
   };
 
   //a/a/// auto updated
- const handleRegistrationSuccess = (createdUser) => {
-  // modal close
-  setIsModalOpen(false);
-
-  // optional: jis role ka user add hua hai us tab par switch
+const handleRegistrationSuccess = (createdUser) => {
+  setIsModalOpen(false);      // modal close
   if (createdUser?.role && createdUser.role !== activeTab) {
     setActiveTab(createdUser.role);
   }
-
-  // refetch so list updates without page refresh
-  fetchData();
-  };
+  fetchData();                // list refresh
+};
 
     // ADD THESE DELETE HANDLERS
   const handleDeleteClick = (user) => {
