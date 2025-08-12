@@ -15,7 +15,7 @@ router.use(verifyToken);
 
 // Routes for expired medicines management
 router.get("/expired-medicines", authorizeRoles("admin", "pharmacist_inventory"), getAllExpiredMedicines);
-router.post("/discard-expired", authorizeRoles("admin", "pharmacist_inventory"), discardExpiredMedicine);
+// router.post("/discard-expired", authorizeRoles("admin", "pharmacist_inventory"), discardExpiredMedicine);
 router.post("/discard-medicine-all-batches", authorizeRoles("admin", "pharmacist_inventory"), discardExpiredMedicineFromAllBatches);
 router.get("/discard-history", authorizeRoles("admin", "pharmacist_inventory"), getDiscardHistory);
 

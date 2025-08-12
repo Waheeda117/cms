@@ -25,6 +25,7 @@ import AccountStatusRoute from "./components/AccountStatusRoute";
 import AccountInactive from "./components/AccountInactive";
 import Stocks from "./pages/inventory/Stocks";
 import AllStocks from "./pages/inventory/AllStocks";
+import ExpiredItems from "./pages/inventory/ExpiredItems";
 import DefaultPasswordModal from "./components/DefaultPasswordModal";
 import InventroyAdminDashboard from "./pages/inventory/InventroyAdminDashboard";
 import AddBatch from "./pages/inventory/AddBatch";
@@ -603,6 +604,17 @@ function App() {
               <ProtectedRoute>
                 <RoleProtectedRoute allowedRoles={["pharmacist_inventory"]}>
                   <AllStocks />
+                </RoleProtectedRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/pharmacist_inventory/expired-items"
+            element={
+              <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={["pharmacist_inventory"]}>
+                  <ExpiredItems />
                 </RoleProtectedRoute>
               </ProtectedRoute>
             }
