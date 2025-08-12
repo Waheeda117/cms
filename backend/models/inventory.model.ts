@@ -12,6 +12,20 @@ export interface IBatchMedicine {
   totalAmount: number;
 }
 
+export interface IDiscardRecord extends Document {
+    medicineId: number;
+    medicineName: string;
+    batchId: mongoose.Types.ObjectId;
+    batchNumber: string;
+    quantityDiscarded: number;
+    pricePerUnit: number;
+    totalValue: number;
+    expiryDate: Date;
+    discardedBy: mongoose.Types.ObjectId;
+    discardedAt: Date;
+    reason: string;
+}
+
 // Main inventory interface for batch management
 export interface IInventory extends Document {
   batchNumber: string;
@@ -115,6 +129,24 @@ const inventorySchema = new Schema<IInventory>(
   },
   { timestamps: true }
 );
+
+
+const discardRecordSchema = new Schema<IDiscardRecord>({
+    medicineId: { type: Number, required: true },
+    medicineName: { type: String, required: true },
+    batchId: { type: Schema.Types.ObjectId, ref: 'Inventory', required: true },
+    batchNumber: { type: String, required: true },
+    quantityDiscarded: { type: Number, required: true, min: 1 },
+    pricePerUnit: { type: Number, required: true, min: 0 },
+    totalValue: { type: Number, required: true, min: 0 },
+    expiryDate: { type: Date, required: true },
+    discardedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    discardedAt: { type: Date, default: Date.now },
+    reason: { type: String, default: 'Expired' }
+}, { timestamps: true });
+
+// Add this export to your existing inventory.model.ts file
+export const DiscardRecord = mongoose.model<IDiscardRecord>("DiscardRecord", discardRecordSchema);
 
 // Create indexes for efficient querying
 // inventorySchema.index({ batchNumber: 1 });
