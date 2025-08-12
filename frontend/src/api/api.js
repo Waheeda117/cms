@@ -271,3 +271,59 @@ export const getDashboardStats = async (dateRange = 'this_month') => {
     throw error;
   }
 };
+
+// Get all expired medicines
+export const getAllExpiredMedicines = async (params = {}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Add query parameters if provided
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+
+    const queryString = queryParams.toString();
+    const url = `/expired-items/expired-medicines${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await axiosInstance.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching expired medicines:", error);
+    throw error;
+  }
+};
+
+// Discard expired medicine from all batches
+export const discardExpiredMedicineFromAllBatches = async (medicineData) => {
+  try {
+    const response = await axiosInstance.post('/expired-items/discard-medicine-all-batches', medicineData);
+    return response.data;
+  } catch (error) {
+    console.error("Error discarding expired medicine:", error);
+    throw error;
+  }
+};
+
+
+export const getDiscardHistory = async (params = {}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+
+    const queryString = queryParams.toString();
+    const url = `/expired-items/discard-history${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await axiosInstance.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching discard history:", error);
+    throw error;
+  }
+};
