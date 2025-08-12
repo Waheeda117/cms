@@ -541,9 +541,9 @@ const ExpiredItems = () => {
                                   <div className={`font-medium ${theme.textPrimary}`}>
                                     {medicine.medicineName}
                                   </div>
-                                  <div className={`text-sm ${theme.textMuted}`}>
+                                  {/* <div className={`text-sm ${theme.textMuted}`}>
                                     ID: {medicine.medicineId}
-                                  </div>
+                                  </div> */}
                                 </div>
                               </div>
                             </td>
@@ -820,9 +820,9 @@ const ExpiredItems = () => {
                               <div className={`font-medium ${theme.textPrimary}`}>
                                 {record.medicineName}
                               </div>
-                              <div className={`text-sm ${theme.textMuted}`}>
+                              {/* <div className={`text-sm ${theme.textMuted}`}>
                                 ID: {record.medicineId}
-                              </div>
+                              </div> */}
                             </div>
                           </div>
                         </td>

@@ -1368,62 +1368,27 @@ const getSummaryStats = async () => {
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
-            $group: {
-                _id: "$medicines.medicineName",
-                totalQuantity: { $sum: "$medicines.quantity" },
-                totalValue: { $sum: "$medicines.totalAmount" },
-                minReorderLevel: { $min: "$medicines.reorderLevel" },
-                batches: {
-                    $push: {
-                        quantity: "$medicines.quantity",
-                        expiryDate: "$medicines.expiryDate"
-                    }
-                }
-            }
-        },
-        {
             $project: {
-                medicineName: "$_id",
-                totalQuantity: 1,
-                totalValue: 1,
-                isLowStock: { $lte: ["$totalQuantity", "$minReorderLevel"] },
-                hasNearExpiry: {
-                    $gt: [
+                medicineName: "$medicines.medicineName",
+                batchNumber: "$batchNumber",
+                quantity: "$medicines.quantity",
+                totalValue: "$medicines.totalAmount",
+                reorderLevel: "$medicines.reorderLevel",
+                expiryDate: "$medicines.expiryDate",
+                isLowStock: { $lte: ["$medicines.quantity", "$medicines.reorderLevel"] },
+                isNearExpiry: {
+                    $and: [
+                        { $gte: ["$medicines.expiryDate", new Date()] },
                         {
-                            $size: {
-                                $filter: {
-                                    input: "$batches",
-                                    cond: {
-                                        $and: [
-                                            { $gte: ["$$this.expiryDate", new Date()] },
-                                            {
-                                                $lte: [
-                                                    "$$this.expiryDate",
-                                                    { $dateAdd: { startDate: new Date(), unit: "day", amount: 10 } }
-                                                ]
-                                            }
-                                        ]
-                                    }
-                                }
-                            }
-                        },
-                        0
+                            $lte: [
+                                "$medicines.expiryDate",
+                                { $dateAdd: { startDate: new Date(), unit: "day", amount: 10 } }
+                            ]
+                        }
                     ]
                 },
-                hasAlreadyExpired: {
-                    $gt: [
-                        {
-                            $size: {
-                                $filter: {
-                                    input: "$batches",
-                                    cond: {
-                                        $lt: ["$$this.expiryDate", new Date()]
-                                    }
-                                }
-                            }
-                        },
-                        0
-                    ]
+                isAlreadyExpired: {
+                    $lt: ["$medicines.expiryDate", new Date()]
                 }
             }
         }
@@ -1433,8 +1398,8 @@ const getSummaryStats = async () => {
     
     const totalItems = results.length;
     const lowStockCount = results.filter(item => item.isLowStock).length;
-    const nearExpiryCount = results.filter(item => item.hasNearExpiry).length;
-    const alreadyExpiredCount = results.filter(item => item.hasAlreadyExpired).length;
+    const nearExpiryCount = results.filter(item => item.isNearExpiry).length;
+    const alreadyExpiredCount = results.filter(item => item.isAlreadyExpired).length;
     const totalStockValue = results.reduce((sum, item) => sum + item.totalValue, 0);
 
     // Format stock value in thousands (K)
@@ -1601,6 +1566,7 @@ const getExpiringSoonItems = async () => {
             $project: {
                 name: "$medicines.medicineName",
                 batch: "$batchNumber",
+                quantity: "$medicines.quantity", // Added quantity for better context
                 expiry: {
                     $dateToString: {
                         format: "%Y-%m-%d",
