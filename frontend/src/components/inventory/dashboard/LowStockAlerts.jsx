@@ -16,12 +16,12 @@ const LowStockAlerts = ({ theme, data }) => {
             Items below reorder level
           </p>
         </div>
-        {/* {lowStockItems.length > 0 && (
+        {lowStockItems.length > 0 && (
           <div className="flex items-center text-emerald-500 cursor-pointer">
             <span className="text-sm font-medium mr-1">View All</span>
             <ChevronRight className="w-5 h-5" />
           </div>
-        )} */}
+        )}
       </div>
 
       {lowStockItems.length > 0 ? (

@@ -84,7 +84,7 @@ const InventoryAdminDashboard = () => {
 
       <SummaryCards theme={theme} data={dashboardData?.summary} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <StockLevelTrends
           theme={theme}
           dateRange={dateRange}
@@ -97,7 +97,7 @@ const InventoryAdminDashboard = () => {
             data={dashboardData?.topStockedMedicines}
           />
         </div>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <LowStockAlerts theme={theme} data={dashboardData?.lowStockItems} />
