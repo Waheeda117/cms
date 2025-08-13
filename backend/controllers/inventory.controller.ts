@@ -1526,7 +1526,7 @@ const getLowStockItems = async () => {
                 $expr: { $lte: ["$totalQuantity", "$minReorderLevel"] }
             }
         },
-        { $limit: 10 },
+        { $limit: 5 },
         {
             $project: {
                 name: "$_id",
@@ -1561,7 +1561,7 @@ const getExpiringSoonItems = async () => {
             }
         },
         { $sort: { "medicines.expiryDate": 1 } },
-        { $limit: 10 },
+        { $limit: 5 },
         {
             $project: {
                 name: "$medicines.medicineName",
@@ -1640,4 +1640,170 @@ const getAlreadyExpiredItems = async () => {
         id: index + 1,
         ...item
     }));
+};
+
+
+
+export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = parseInt(page as string);
+        const limitNum = parseInt(limit as string);
+        const skip = (pageNum - 1) * limitNum;
+        
+        const tenDaysFromNow = new Date();
+        tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
+        
+        const pipeline: PipelineStage[] = [
+            { $match: { isDraft: false } },
+            { $unwind: "$medicines" },
+            {
+                $match: {
+                    "medicines.expiryDate": {
+                        $gte: new Date(),
+                        $lte: tenDaysFromNow
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: "$medicines.medicineName",
+                    totalQuantity: { $sum: "$medicines.quantity" },
+                    batches: {
+                        $push: {
+                            batchNumber: "$batchNumber",
+                            quantity: "$medicines.quantity",
+                            expiryDate: "$medicines.expiryDate",
+                            price: "$medicines.price"
+                        }
+                    },
+                    earliestExpiry: { $min: "$medicines.expiryDate" }
+                }
+            },
+            { $sort: { earliestExpiry: 1 } },
+            { $skip: skip },
+            { $limit: limitNum },
+            {
+                $project: {
+                    name: "$_id",
+                    totalQuantity: 1,
+                    batches: 1,
+                    earliestExpiry: {
+                        $dateToString: {
+                            format: "%Y-%m-%d",
+                            date: "$earliestExpiry"
+                        }
+                    },
+                    daysLeft: {
+                        $ceil: {
+                            $divide: [
+                                { $subtract: ["$earliestExpiry", new Date()] },
+                                86400000
+                            ]
+                        }
+                    }
+                }
+            }
+        ];
+        
+        // Get total count for pagination
+        const countPipeline = pipeline.slice(0, -3); // Remove skip, limit, and project
+        const totalCount = (await Inventory.aggregate([...countPipeline, { $count: "total" }]))[0]?.total || 0;
+        
+        const results = await Inventory.aggregate(pipeline);
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                items: results,
+                pagination: {
+                    currentPage: pageNum,
+                    totalPages: Math.ceil(totalCount / limitNum),
+                    totalItems: totalCount,
+                    itemsPerPage: limitNum
+                }
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Error in getExpireSoonItems:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
+export const getLowStockItemsEndpoint = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = parseInt(page as string);
+        const limitNum = parseInt(limit as string);
+        const skip = (pageNum - 1) * limitNum;
+        
+        const pipeline: PipelineStage[] = [
+            { $match: { isDraft: false } },
+            { $unwind: "$medicines" },
+            {
+                $group: {
+                    _id: "$medicines.medicineName",
+                    totalQuantity: { $sum: "$medicines.quantity" },
+                    minReorderLevel: { $min: "$medicines.reorderLevel" },
+                    batches: {
+                        $push: {
+                            batchNumber: "$batchNumber",
+                            quantity: "$medicines.quantity",
+                            expiryDate: "$medicines.expiryDate",
+                            price: "$medicines.price"
+                        }
+                    }
+                }
+            },
+            {
+                $match: {
+                    $expr: { $lte: ["$totalQuantity", "$minReorderLevel"] }
+                }
+            },
+            { $sort: { totalQuantity: 1 } }, // Show items with lowest stock first
+            { $skip: skip },
+            { $limit: limitNum },
+            {
+                $project: {
+                    name: "$_id",
+                    currentStock: "$totalQuantity",
+                    reorderLevel: "$minReorderLevel",
+                    shortage: { $subtract: ["$minReorderLevel", "$totalQuantity"] },
+                    batches: 1
+                }
+            }
+        ];
+        
+        // Get total count for pagination
+        const countPipeline = pipeline.slice(0, -4); // Remove sort, skip, limit, and project
+        const totalCount = (await Inventory.aggregate([...countPipeline, { $count: "total" }]))[0]?.total || 0;
+        
+        const results = await Inventory.aggregate(pipeline);
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                items: results,
+                pagination: {
+                    currentPage: pageNum,
+                    totalPages: Math.ceil(totalCount / limitNum),
+                    totalItems: totalCount,
+                    itemsPerPage: limitNum
+                }
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Error in getLowStockItemsEndpoint:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
 };

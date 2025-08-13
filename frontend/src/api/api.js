@@ -327,3 +327,47 @@ export const getDiscardHistory = async (params = {}) => {
     throw error;
   }
 };
+
+export const getLowStockItems = async (params = {}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Add query parameters if provided
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+
+    const queryString = queryParams.toString();
+    const url = `/inventory/low-stock-items${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await axiosInstance.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching low stock items:", error);
+    throw error;
+  }
+};
+
+export const getExpireSoonItems = async (params = {}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Add query parameters if provided
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+
+    const queryString = queryParams.toString();
+    const url = `/inventory/expire-soon-items${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await axiosInstance.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching soon-to-expire items:", error);
+    throw error;
+  }
+};
