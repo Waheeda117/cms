@@ -40,9 +40,59 @@ const AddBatch = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { batchDetails: routeBatchDetails, attachments = [] } =
-    location.state || {};
 
+  // attachments yahin se ayenge (sirf yeh 1 line ho, duplicate na ho)
+  const { batchDetails: routeBatchDetails, attachments = [] } = location.state || {};
+
+  // ✅ sirf 1 martaba declare
+  const [previewUrls, setPreviewUrls] = useState([]);
+
+  // ✅ sirf 1 useEffect — iske baad koi "return () => {...}" ya second useEffect NA ho
+  useEffect(() => {
+    const urls = [];
+    (attachments || []).forEach((a) => {
+      if (!a) return;
+      if (typeof a === "string") urls.push(a);           // direct URL
+      else if (a?.url) urls.push(a.url);                 // object.url
+      else if (a instanceof File || a instanceof Blob)   // local file -> blob
+        urls.push(URL.createObjectURL(a));
+    });
+    setPreviewUrls(urls);
+
+    // cleanup for blob urls
+    return () => {
+      urls.forEach((u) => {
+        if (u?.startsWith?.("blob:")) {
+          try { URL.revokeObjectURL(u); } catch { }
+        }
+      });
+    };
+  }, [attachments]);
+
+
+  useEffect(() => {
+    const urls = [];
+    attachments.forEach((a) => {
+      if (!a) return;
+      if (typeof a === "string") {
+        urls.push(a);                     // direct URL string
+      } else if (a.url) {
+        urls.push(a.url);                 // object with url prop
+      } else if (a instanceof File || a instanceof Blob) {
+        urls.push(URL.createObjectURL(a)); // local preview for File/Blob
+      }
+    });
+    setPreviewUrls(urls);
+
+    // cleanup any blob: URLs we created
+    return () => {
+      urls.forEach((u) => {
+        if (typeof u === "string" && u.startsWith("blob:")) {
+          try { URL.revokeObjectURL(u); } catch { }
+        }
+      });
+    };
+  }, [attachments]);
   const { user } = useAuthStore();
 
   const {
@@ -257,8 +307,8 @@ const AddBatch = () => {
     currentMedicine.medicineId,
   ]);
 
-  const hasPriceMismatch = priceDifference > 0.001;
-  const canAddBatch = !hasPriceMismatch && medicines.length > 0;
+  const hasPriceMismatch = priceDifference > 0.001; // sirf warning ke liye
+  const canAddBatch = medicines.length > 0 && !isPriceExceeded;
 
   const handleMedicineInputChange = (e) => {
     const { name, value } = e.target;
@@ -292,9 +342,9 @@ const AddBatch = () => {
     };
 
     setCurrentMedicine(updatedMedicine);
-    setSearchTerm(medicine.name);   
+    setSearchTerm(medicine.name);
     setShowMedicineDropdown(false);
-  
+
   };
 
   const addMedicineToList = () => {
@@ -674,6 +724,37 @@ const AddBatch = () => {
           </div>
         </div>
 
+        {/* Attachments Preview */}
+        {previewUrls.length > 0 && (
+          <div className={`${theme.card} rounded-lg border ${theme.borderSecondary} p-4 mb-8 max-w-5xl`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-sm font-semibold ${theme.textPrimary}`}>
+                Attachments{" "}
+                <span className={theme.textMuted}>({previewUrls.length})</span>
+              </h3>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {previewUrls.map((url, idx) => (
+                <a
+                  key={idx}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                  title="Open in new tab"
+                >
+                  <img
+                    src={url}
+                    alt={`Attachment ${idx + 1}`}
+                    className="h-20 w-20 object-cover rounded-md border"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Medicine Form */}
         <form onSubmit={handleSubmit} className="mb-8">
           {error && (

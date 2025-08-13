@@ -40,23 +40,23 @@ const UpdateUserModal = ({ isOpen, onClose, userData, onSuccess }) => {
   });
 
   // Pre-fill form data when userData changes
-useEffect(() => {
-  if (userData) {
-    setFormData({
-      firstName: userData.firstName || "",
-      lastName: userData.lastName || "",
-      email: userData.email || "",
-      cnic: userData.cnic || "",
-      phoneNumber: userData.phoneNumber || "",
-      address: userData.address || "",
-      gender: userData.gender || "",
-      // Fix: Convert array to string or use empty string
-      speciality: userData.speciality || "", // Remove the [] default
-      registrationNumber: userData.registrationNumber || "",
-      doctorSchedule: userData.doctorSchedule || [],
-    });
-  }
-}, [userData]);
+  useEffect(() => {
+    if (userData) {
+      setFormData({
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        email: userData.email || "",
+        cnic: userData.cnic || "",
+        phoneNumber: userData.phoneNumber || "",
+        address: userData.address || "",
+        gender: userData.gender || "",
+        // Fix: Convert array to string or use empty string
+        speciality: userData.speciality || "", // Remove the [] default
+        registrationNumber: userData.registrationNumber || "",
+        doctorSchedule: userData.doctorSchedule || [],
+      });
+    }
+  }, [userData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -89,10 +89,10 @@ useEffect(() => {
       return false;
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email address");
+    // Email: OPTIONAL — agar likha hai to valid hona chahiye, blank allowed hai
+    const e = (formData.email || "").trim();
+    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      setError("Please enter a valid email address or leave it blank.");
       return false;
     }
 
@@ -111,7 +111,8 @@ useEffect(() => {
     return true;
   };
 
-const handleSubmit = async (e) => {
+
+  const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (!validateForm()) return;
@@ -121,59 +122,66 @@ const handleSubmit = async (e) => {
   setSuccess("");
 
   try {
-    // Filter the data based on user role to avoid sending irrelevant fields
-    let filteredFormData = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      phoneNumber: formData.phoneNumber,
-      address: formData.address,
-      gender: formData.gender,
-    };
+    // Build payload
+    const filteredFormData = {
+  firstName: formData.firstName,
+  lastName: formData.lastName,
+  phoneNumber: formData.phoneNumber,
+  address: formData.address,
+  gender: formData.gender,
+};
 
-    // Only include email and CNIC if they have values
-    if (formData.email && formData.email.trim()) {
-      filteredFormData.email = formData.email;
-    }
-    if (formData.cnic && formData.cnic.trim()) {
-      filteredFormData.cnic = formData.cnic;
-    }
+const emailTrim = (formData.email ?? "").trim();
+filteredFormData.email = emailTrim;
 
-    // Only include doctor-specific fields for doctors
+const cnicTrim = (formData.cnic ?? "").trim();
+if (cnicTrim) filteredFormData.cnic = cnicTrim;
+    // Doctor-specific fields
     if (userData?.role === "doctor") {
-      if (formData.speciality && formData.speciality.trim()) {
-        filteredFormData.speciality = formData.speciality;
-      }
-      if (formData.registrationNumber && formData.registrationNumber.trim()) {
-        filteredFormData.registrationNumber = formData.registrationNumber;
-      }
-      if (formData.doctorSchedule && formData.doctorSchedule.length > 0) {
+      const specialityTrim = (formData.speciality ?? "").trim();
+      const regTrim = (formData.registrationNumber ?? "").trim();
+      if (specialityTrim) filteredFormData.speciality = specialityTrim;
+      if (regTrim) filteredFormData.registrationNumber = regTrim;
+      if (Array.isArray(formData.doctorSchedule) && formData.doctorSchedule.length > 0) {
         filteredFormData.doctorSchedule = formData.doctorSchedule;
       }
     }
 
+    // Lazy-import API and update
     const { updateUserDataByRoleAndId } = await import("../../api/api");
-
     const response = await updateUserDataByRoleAndId(
       userData.role,
       userData._id,
-      filteredFormData // Use filtered data instead of formData
+      filteredFormData
     );
 
-    setSuccess(response.message || "Profile updated successfully");
-    setTimeout(() => {
-      onSuccess(response.user);
-      onClose();
-      resetForm();
-    }, 1500);
+  setSuccess(response.message || "Profile updated successfully");
+setTimeout(() => {
+  // Kya user ne email/CNIC blank chhoda?
+  const clearedEmail = (formData.email ?? "").trim() === "";
+  const clearedCnic  = (formData.cnic  ?? "").trim() === "";
+
+  const patchedUser = {
+    ...response.user,
+    ...(clearedEmail ? { email: "" } : {}),
+    ...(clearedCnic  ? { cnic: "" }  : {}),
+  };
+
+  const skipRefetch = clearedEmail || clearedCnic;
+
+  onSuccess(patchedUser, { skipRefetch });
+  onClose();
+  resetForm();
+}, 1500);
+
+
   } catch (error) {
-    setError(
-      error.response?.data?.message || "Update failed. Please try again."
-    );
+    setError(error?.response?.data?.message || "Update failed. Please try again.");
   } finally {
     setLoading(false);
   }
 };
-
+  
   const resetForm = () => {
     setFormData({
       name: "",
@@ -387,7 +395,7 @@ const handleSubmit = async (e) => {
               <label
                 className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
               >
-                Gender
+                Gender*
               </label>
               <select
                 name="gender"
@@ -460,7 +468,7 @@ const handleSubmit = async (e) => {
                 onChange={handleInputChange}
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
                 placeholder="Enter email address"
-                required
+
               />
             </div>
           </div>
