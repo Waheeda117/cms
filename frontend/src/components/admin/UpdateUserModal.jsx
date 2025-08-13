@@ -90,11 +90,15 @@ useEffect(() => {
     }
 
     // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email address");
-      return false;
-    }
+ // Email (optional) — only validate when provided
+if (formData.email && formData.email.trim()) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(formData.email.trim())) {
+    setError("Please enter a valid email address");
+    return false;
+  }
+}
+
 
     // Doctor specific validation
     if (userData?.role === "doctor") {
@@ -122,34 +126,86 @@ const handleSubmit = async (e) => {
 
   try {
     // Filter the data based on user role to avoid sending irrelevant fields
-    let filteredFormData = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      phoneNumber: formData.phoneNumber,
-      address: formData.address,
-      gender: formData.gender,
-    };
+  // Build payload (always include email & cnic; send "" if user cleared them)
+// Build payload (send null when user clears the field)
+let filteredFormData = {};
 
-    // Only include email and CNIC if they have values
-    if (formData.email && formData.email.trim()) {
-      filteredFormData.email = formData.email;
-    }
-    if (formData.cnic && formData.cnic.trim()) {
-      filteredFormData.cnic = formData.cnic;
-    }
+// Required always
+filteredFormData.firstName = formData.firstName?.trim() || "";
+filteredFormData.lastName = formData.lastName?.trim() || "";
+filteredFormData.phoneNumber = formData.phoneNumber?.trim() || "";
+filteredFormData.address = formData.address?.trim() || "";
+filteredFormData.gender = formData.gender || "";
 
-    // Only include doctor-specific fields for doctors
-    if (userData?.role === "doctor") {
-      if (formData.speciality && formData.speciality.trim()) {
-        filteredFormData.speciality = formData.speciality;
-      }
-      if (formData.registrationNumber && formData.registrationNumber.trim()) {
-        filteredFormData.registrationNumber = formData.registrationNumber;
-      }
-      if (formData.doctorSchedule && formData.doctorSchedule.length > 0) {
-        filteredFormData.doctorSchedule = formData.doctorSchedule;
-      }
-    }
+// Optional fields: send ONLY if non-empty
+if (formData.email && formData.email.trim() !== "") {
+  filteredFormData.email = formData.email.trim();
+}
+if (formData.cnic && formData.cnic.trim() !== "") {
+  filteredFormData.cnic = formData.cnic.trim();
+}
+
+// Doctor-only fields
+if (userData?.role === "doctor") {
+  if (formData.speciality && formData.speciality.trim() !== "") {
+    filteredFormData.speciality = formData.speciality.trim();
+  }
+  if (
+    formData.registrationNumber &&
+    formData.registrationNumber.trim() !== ""
+  ) {
+    filteredFormData.registrationNumber = formData.registrationNumber.trim();
+  }
+  if (Array.isArray(formData.doctorSchedule) && formData.doctorSchedule.length) {
+    filteredFormData.doctorSchedule = formData.doctorSchedule;
+  }
+}
+
+// common fields (only if changed)
+["firstName", "lastName", "phoneNumber", "address", "gender"].forEach((key) => {
+  if (formData[key] !== userData[key]) {
+    filteredFormData[key] =
+      typeof formData[key] === "string" ? formData[key].trim() : formData[key];
+  }
+});
+
+// email (optional): if changed, send trimmed or null when cleared
+if (formData.email !== userData.email) {
+  filteredFormData.email = formData.email?.trim() || null;
+}
+
+// cnic (optional): if changed, send trimmed or null when cleared
+if (formData.cnic !== userData.cnic) {
+  filteredFormData.cnic = formData.cnic?.trim() || null;
+}
+
+// doctor-only fields (only if doctor AND changed)
+if (userData?.role === "doctor") {
+  if (formData.speciality !== userData.speciality) {
+    filteredFormData.speciality = formData.speciality?.trim() || "";
+  }
+  if (formData.registrationNumber !== userData.registrationNumber) {
+    filteredFormData.registrationNumber =
+      formData.registrationNumber?.trim() || "";
+  }
+  if (
+    JSON.stringify(formData.doctorSchedule || []) !==
+    JSON.stringify(userData.doctorSchedule || [])
+  ) {
+    filteredFormData.doctorSchedule = formData.doctorSchedule || [];
+  }
+}
+
+// Doctor-only fields
+if (userData?.role === "doctor") {
+  filteredFormData.speciality = formData.speciality?.trim() || "";
+  filteredFormData.registrationNumber =
+    formData.registrationNumber?.trim() || "";
+  filteredFormData.doctorSchedule = Array.isArray(formData.doctorSchedule)
+    ? formData.doctorSchedule
+    : [];
+}
+
 
     const { updateUserDataByRoleAndId } = await import("../../api/api");
 
@@ -159,12 +215,30 @@ const handleSubmit = async (e) => {
       filteredFormData // Use filtered data instead of formData
     );
 
-    setSuccess(response.message || "Profile updated successfully");
-    setTimeout(() => {
-      onSuccess(response.user);
-      onClose();
-      resetForm();
-    }, 1500);
+setSuccess(response.message || "Profile updated successfully");
+
+// (optional) local flag maintain karna ho to rehne do:
+try {
+  const uid = userData?._id;
+  if (uid) {
+    if (!formData.email || !formData.email.trim()) {
+      localStorage.setItem(`hideEmail:${uid}`, "1");
+    } else {
+      localStorage.removeItem(`hideEmail:${uid}`);
+    }
+  }
+} catch { /* ignore */ }
+
+// Parent ko updated user turant do, aur modal band karo.
+// YAHAN setTimeout aur resetForm NAHIN chalayenge.
+const patchedUser = {
+  ...response.user,
+  email: formData.email?.trim() || "",
+};
+
+onSuccess(patchedUser);
+onClose();
+
   } catch (error) {
     setError(
       error.response?.data?.message || "Update failed. Please try again."
@@ -387,7 +461,7 @@ const handleSubmit = async (e) => {
               <label
                 className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
               >
-                Gender
+                Gender*
               </label>
               <select
                 name="gender"
@@ -460,7 +534,7 @@ const handleSubmit = async (e) => {
                 onChange={handleInputChange}
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
                 placeholder="Enter email address"
-                required
+              
               />
             </div>
           </div>

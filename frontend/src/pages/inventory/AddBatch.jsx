@@ -83,15 +83,19 @@ const AddBatch = () => {
     setCurrentMedicine((prev) => ({ ...prev, [field]: value }));
   };
 
-  const resetCurrentMedicine = () => {
-    setCurrentMedicine({
-      medicineId: null,
-      medicineName: "",
-      quantity: "",
-      price: "",
-      expiryDate: "",
-    });
-  };
+ const resetCurrentMedicine = () => {
+  setCurrentMedicine({
+    medicineId: null,       // ✅ selection reset
+    medicineName: "",       // clear name
+    quantity: "",           // clear quantity
+    price: "",              // clear price
+    expiryDate: "",         // clear expiry date
+  });
+  setSearchTerm("");        // dropdown search clear
+  setShowMedicineDropdown(false); // dropdown hide
+  setError(null);           // clear any form error
+};
+
 
   // Helper functions for date formatting
   // "YYYY-MM-DD" ko local date samajh kar DD/MM/YYYY dikhaye (UTC shift ke baghair)
@@ -261,26 +265,38 @@ const AddBatch = () => {
   };
 
   const handleMedicineSelect = (medicine) => {
-    const updatedMedicine = {
-      ...currentMedicine,
-      medicineId: medicine.id,
-      medicineName: medicine.name,
-      quantity: medicine.id === 1 ? "" : currentMedicine.quantity,
-      price:
-        medicine.id === 1 ? remainingAmount.toFixed(2) : currentMedicine.price,
-      expiryDate: medicine.id === 1 ? "" : currentMedicine.expiryDate,
-    };
+  // default expiry: +2 years (sirf non-misc)
+  const defaultExpiry = new Date();
+  defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 2);
+  const defaultISO = defaultExpiry.toISOString().split("T")[0];
 
-    setCurrentMedicine(updatedMedicine);
-    setShowMedicineDropdown(false);
-    setSearchTerm("");
+  const isMisc = medicine.id === 1;
+
+  const updatedMedicine = {
+    ...currentMedicine,
+    medicineId: medicine.id,
+    medicineName: medicine.name, // dropdown ka exact name lock
+    quantity: isMisc ? "" : currentMedicine.quantity,
+    price: isMisc ? remainingAmount.toFixed(2) : currentMedicine.price,
+    expiryDate: isMisc ? "" : defaultISO, // non-misc ko default expiry
   };
 
-  const addMedicineToList = () => {
-    if (!isMedicineFormValid) {
-      setError("Please fill all required fields with valid values");
-      return;
-    }
+
+    setCurrentMedicine(updatedMedicine);
+  setShowMedicineDropdown(false);
+  setSearchTerm("");
+};
+
+ const addMedicineToList = () => {
+  const matched = MEDICINES.find(
+    m =>
+      m.id === currentMedicine.medicineId &&
+      m.name.toLowerCase() === (currentMedicine.medicineName || "").toLowerCase()
+  );
+  if (!matched) {
+    setError("Please select a valid medicine from the list.");
+    return;
+  }
 
     // Check for duplicate medicine
     const existingMedicine = medicines.find(
@@ -672,9 +688,11 @@ const AddBatch = () => {
                   name="medicineName"
                   value={currentMedicine.medicineName || searchTerm}
                   onChange={(e) => {
-                    setSearchTerm(e.target.value);
+                    const val = e.target.value;
+                    setSearchTerm(val);
                     setShowMedicineDropdown(true);
-                    updateCurrentMedicineField("medicineName", e.target.value);
+                    updateCurrentMedicineField("medicineName", val);
+                    setCurrentMedicine(prev => ({ ...prev, medicineId: null })); // invalidate selection
                   }}
                   onFocus={() => setShowMedicineDropdown(true)}
                   onBlur={(e) => {

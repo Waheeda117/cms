@@ -65,7 +65,7 @@ const DashboardPage = () => {
       bgColor: "bg-green-500 bg-opacity-20 border-green-500",
     },
     {
-      title: "Pending Prescriptions",
+      title: "Pending Prescription",
       value: 18,
       icon: ClipboardList,
       change: "-5",
