@@ -46,14 +46,10 @@ const RoleProfile = () => {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [resetCredentials, setResetCredentials] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
-  const handleProfileUpdate = async () => {
-  try {
-    const res = await api.get(`/users/${userData._id}`); // yahan user ki ID se fresh data le rahe hain
-    setUserData(res.data); // state me naya data set kar diya
-  } catch (error) {
-    console.error("Failed to refresh user data after update:", error);
-  }
-};
+  const handleProfileUpdate = (updatedUser) => {
+    setUserData(updatedUser);
+    // Show success message or notification here if needed
+  };
 
   // Add this function to handle copying to clipboard
   const copyToClipboard = async (text, fieldName) => {
@@ -116,13 +112,7 @@ const RoleProfile = () => {
       try {
         setLoading(true);
         const response = await getUserDataByRoleAndId(role, id);
-        const user = response.user;
-try {
-  const uid = user?._id;
-  const hide = uid ? localStorage.getItem(`hideEmail:${uid}`) : null;
-  if (hide === "1") user.email = "";
-} catch {}
-setUserData(user);
+        setUserData(response.user);
       } catch (err) {
         console.error("Error fetching user data:", err);
         setError("Failed to fetch user data");
