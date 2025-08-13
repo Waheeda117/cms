@@ -32,26 +32,6 @@ import { useBatchUpdateStore } from "../../store/batchUpdateStore";
 import Modal from "../../components/UI/Modal";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-const toISO = (date) => {
-  if (!date) return "";
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;           // YYYY-MM-DD (local, no UTC shift)
-};
-
-const fromISO = (iso) => {
-  if (!iso) return null;
-  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
-  return new Date(y, m - 1, d);      // Local date object (no timezone jump)
-};
-
-// Table display: DD/MM/YYYY
-const formatDateForDisplay = (iso) => {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-};
 
 const UpdateBatch = () => {
   const { theme } = useTheme();
@@ -112,16 +92,25 @@ const UpdateBatch = () => {
     user?.role === "admin"
       ? "/admin/inventory-management"
       : user?.role === "pharmacist_inventory"
-        ? "/pharmacist_inventory/inventory-management"
-        : "/inventory-management";
+      ? "/pharmacist_inventory/inventory-management"
+      : "/inventory-management";
 
   const submitRedirectPath =
     user?.role === "admin"
       ? `/admin/inventory-management/${batchId}`
       : user?.role === "pharmacist_inventory"
-        ? `/pharmacist_inventory/inventory-management/${batchId}`
-        : "/inventory-management";
+      ? `/pharmacist_inventory/inventory-management/${batchId}`
+      : "/inventory-management";
 
+  // Helper functions for date formatting
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const formatDateForInput = (dateString) => {
     if (!dateString) return "";
@@ -207,17 +196,17 @@ const UpdateBatch = () => {
         ) {
           const existingMedicines = Array.isArray(batch.data.medicines)
             ? batch.data.medicines.map((medicine) => {
-              if (!medicine.medicineId) {
-                const foundMedicine = getMedicineByName(
-                  medicine.medicineName
-                );
-                return {
-                  ...medicine,
-                  medicineId: foundMedicine ? foundMedicine.id : null,
-                };
-              }
-              return medicine;
-            })
+                if (!medicine.medicineId) {
+                  const foundMedicine = getMedicineByName(
+                    medicine.medicineName
+                  );
+                  return {
+                    ...medicine,
+                    medicineId: foundMedicine ? foundMedicine.id : null,
+                  };
+                }
+                return medicine;
+              })
             : [];
 
           setMedicines(existingMedicines);
@@ -345,24 +334,24 @@ const UpdateBatch = () => {
   };
 
   const handleMedicineSelect = (medicine) => {
-  // default expiry: +2 years (sirf non-misc)
-  const defaultExpiry = new Date();
-  defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 2);
+    // Set default expiry date to 2 years from now when medicine is selected
+    const defaultExpiryDate = new Date();
+    defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 2);
+    const defaultExpiryDateString = defaultExpiryDate
+      .toISOString()
+      .split("T")[0];
 
-  const isMisc = medicine.id === 1;
-
-  setCurrentMedicine(prev => ({
-    ...prev,
-    medicineId: medicine.id,
-    medicineName: medicine.name,      // lock exact name
-    quantity: isMisc ? "" : prev.quantity,
-    price: isMisc ? remainingAmount.toFixed(2) : prev.price,
-    expiryDate: isMisc ? "" : toISO(defaultExpiry), // ← yahan toISO already defined hai top par
-  }));
-
-  setShowMedicineDropdown(false);
-  setSearchTerm("");
-};
+    setCurrentMedicine((prev) => ({
+      ...prev,
+      medicineId: medicine.id,
+      medicineName: medicine.name,
+      quantity: medicine.id === 1 ? "" : prev.quantity,
+      price: medicine.id === 1 ? remainingAmount.toFixed(2) : prev.price,
+      expiryDate: medicine.id === 1 ? "" : "", // Set default expiry for non-miscellaneous
+    }));
+    setShowMedicineDropdown(false);
+    setSearchTerm("");
+  };
 
   const checkPriceExceeded = (price, quantity) => {
     const medicineTotal = parseFloat(price) * parseInt(quantity);
@@ -382,15 +371,9 @@ const UpdateBatch = () => {
   };
 
   const addMedicineToList = () => {
-    const matched = MEDICINES.find(
-  m =>
-    m.id === currentMedicine.medicineId &&
-    m.name.toLowerCase() === (currentMedicine.medicineName || "").toLowerCase()
-);
-if (!matched) {
-  setError("Please select a valid medicine from the list.");
-  return;
-
+    if (!isMedicineFormValid) {
+      setError("Please fill all required fields with valid values");
+      return;
     }
 
     // Skip duplicate check for miscellaneous
@@ -454,14 +437,23 @@ if (!matched) {
   const startEdit = (index, medicine) => {
     setEditingIndex(index);
 
-    // expiryDate ko jaisa store hai (YYYY-MM-DD) waisa hi use karo
+    // Format the expiry date for the date input field
+    let formattedExpiryDate = "";
+    if (medicine.expiryDate) {
+      // If the date is already in YYYY-MM-DD format, use it directly
+      // Otherwise, convert it to the correct format
+      const date = new Date(medicine.expiryDate);
+      if (!isNaN(date.getTime())) {
+        formattedExpiryDate = date.toISOString().split("T")[0];
+      }
+    }
+
     setEditValues({
-      price: String(medicine.price ?? ""),
-      quantity: String(medicine.quantity ?? ""),
-      expiryDate: medicine.expiryDate || "",   // ISO string expected
+      price: medicine.price.toString(),
+      quantity: medicine.quantity.toString(),
+      expiryDate: formattedExpiryDate, // Use formatted date
     });
   };
-
 
   const cancelEdit = () => {
     setEditingIndex(null);
@@ -498,11 +490,11 @@ if (!matched) {
       prev.map((medicine, i) =>
         i === index
           ? {
-            ...medicine,
-            price: parseFloat(editValues.price),
-            quantity: parseInt(editValues.quantity),
-            expiryDate: editValues.expiryDate, // Update expiry date
-          }
+              ...medicine,
+              price: parseFloat(editValues.price),
+              quantity: parseInt(editValues.quantity),
+              expiryDate: editValues.expiryDate, // Update expiry date
+            }
           : medicine
       )
     );
@@ -531,7 +523,7 @@ if (!matched) {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-        "Failed to finalize batch. Please try again."
+          "Failed to finalize batch. Please try again."
       );
     } finally {
       setFinalizeLoading(false);
@@ -614,7 +606,7 @@ if (!matched) {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-        "Failed to update batch. Please try again."
+          "Failed to update batch. Please try again."
       );
     } finally {
       setUpdateLoading(false);
@@ -755,13 +747,11 @@ if (!matched) {
                   name="medicineName"
                   value={currentMedicine.medicineName || searchTerm}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    setSearchTerm(val);
+                    setSearchTerm(e.target.value);
                     setShowMedicineDropdown(true);
                     setCurrentMedicine((prev) => ({
                       ...prev,
-                      medicineName: val,
-                      medicineId: null,        // ✅ user ne type kiya => selection invalid
+                      medicineName: e.target.value,
                     }));
                   }}
                   onFocus={() => setShowMedicineDropdown(true)}
@@ -792,11 +782,13 @@ if (!matched) {
                         <li
                           key={medicine.id}
                           onClick={() => handleMedicineSelect(medicine)}
-                          className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary
-                            } ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS"
+                          className={`px-4 py-2 cursor-pointer hover:${
+                            theme.cardSecondary
+                          } ${theme.textPrimary} ${
+                            medicine.name === "MISCELLANEOUS"
                               ? "bg-yellow-50 border-l-4 border-yellow-400"
                               : ""
-                            }`}
+                          }`}
                         >
                           {medicine.name}
                         </li>
@@ -896,19 +888,26 @@ if (!matched) {
                         className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
                       />
                       <DatePicker
-                        selected={fromISO(currentMedicine.expiryDate)}
-                        onChange={(date) =>
+                        selected={
+                          currentMedicine.expiryDate
+                            ? new Date(currentMedicine.expiryDate)
+                            : null
+                        }
+                        onChange={(date) => {
+                          const isoDate = date
+                            ? date.toISOString().split("T")[0]
+                            : "";
                           setCurrentMedicine((prev) => ({
                             ...prev,
-                            expiryDate: date ? toISO(date) : "",
-                          }))
-                        }
+                            expiryDate: isoDate,
+                          }));
+                        }}
                         dateFormat="dd/MM/yyyy"
                         minDate={new Date()}
                         placeholderText="DD/MM/YYYY"
                         className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
+                        wrapperClassName="w-full"
                       />
-
                     </div>
                   </div>
                 </div>
@@ -975,8 +974,9 @@ if (!matched) {
                     medicines.map((medicine, index) => (
                       <tr
                         key={`${medicine.medicineId}-${index}`}
-                        className={`${index % 2 === 0 ? theme.card : theme.cardSecondary
-                          } border-b ${theme.borderSecondary}`}
+                        className={`${
+                          index % 2 === 0 ? theme.card : theme.cardSecondary
+                        } border-b ${theme.borderSecondary}`}
                       >
                         <td className="px-4 py-3">
                           <div
@@ -1030,18 +1030,24 @@ if (!matched) {
                         >
                           {editingIndex === index ? (
                             <DatePicker
-                              selected={fromISO(editValues.expiryDate)}
-                              onChange={(date) =>
+                              selected={
+                                editValues.expiryDate
+                                  ? new Date(editValues.expiryDate)
+                                  : null
+                              }
+                              onChange={(date) => {
+                                const isoDate = date
+                                  ? date.toISOString().split("T")[0]
+                                  : "";
                                 setEditValues((prev) => ({
                                   ...prev,
-                                  expiryDate: date ? toISO(date) : "",
-                                }))
-                              }
+                                  expiryDate: isoDate,
+                                }));
+                              }}
                               dateFormat="dd/MM/yyyy"
                               minDate={new Date()}
                               className={`w-32 px-2 py-1 text-center ${theme.input} rounded border ${theme.borderSecondary}`}
                             />
-
                           ) : medicine.expiryDate ? (
                             formatDateForDisplay(medicine.expiryDate)
                           ) : (
@@ -1054,12 +1060,12 @@ if (!matched) {
                         >
                           {editingIndex === index
                             ? `PKR ${(
-                              parseFloat(editValues.quantity || 0) *
-                              parseFloat(editValues.price || 0)
-                            ).toFixed(2)}`
+                                parseFloat(editValues.quantity || 0) *
+                                parseFloat(editValues.price || 0)
+                              ).toFixed(2)}`
                             : `PKR ${(
-                              medicine.quantity * medicine.price
-                            ).toFixed(2)}`}
+                                medicine.quantity * medicine.price
+                              ).toFixed(2)}`}
                         </td>
 
                         <td
@@ -1270,7 +1276,7 @@ if (!matched) {
             <button
               type="button"
               onClick={(e) => handleSubmit(e, true)}
-              disabled={updateLoading || !canUpdateBatch || editingIndex !== null}
+              disabled={updateLoading || !canUpdateBatch ||  editingIndex !== null}
               className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {updateLoading ? (

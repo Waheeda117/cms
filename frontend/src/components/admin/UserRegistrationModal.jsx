@@ -39,7 +39,6 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
 
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [newUserCredentials, setNewUserCredentials] = useState(null);
-  const [createdUserInfo, setCreatedUserInfo] = useState(null);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -138,7 +137,7 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
   };
 
 ///aaa/a/a
-const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (!validateForm()) return;
@@ -168,28 +167,38 @@ const handleSubmit = async (e) => {
         throw new Error("Invalid role");
     }
 
-    // ✅ success message (fallback)
-    setSuccess(response?.message || "User registered successfully");
+    // Message set (fallback rakha hai)
+    setSuccess((response && response.message) ? response.message : "User registered successfully");
 
-    // ✅ created user safely pick
-    const createdUser = response?.user || response?.data?.user || null;
+    // API se naya user safely nikaal lo (shape flexible rakhi hai)
+    const createdUser =
+      (response && response.user) ||
+      (response && response.data && response.data.user) ||
+      null;
 
-    // ✅ credentials modal ke liye data set
+    // Credentials modal ke liye username — API se ya fallback (displayUsername tumhari file me pehle se defined hai)
     setNewUserCredentials({
-      username: createdUser?.username || displayUsername || "",
+      username: (createdUser && createdUser.username) || displayUsername || "",
       password: "abc12345",
     });
-
-    // ✅ credentials modal khol do (close baad me handleCredentialsClose karega)
     setShowCredentialsModal(true);
+
+    // Parent ko notify (list refetch) + modal close + form reset
+    // setTimeout(() => {
+    //   if (onSuccess) onSuccess(createdUser);
+    //   if (onClose) onClose();
+    //   resetForm();
+    // }, 1500);
   } catch (err) {
     setError(
-      err?.response?.data?.message || "Registration failed. Please try again."
+      (err && err.response && err.response.data && err.response.data.message) ||
+        "Registration failed. Please try again."
     );
   } finally {
     setLoading(false);
   }
 };
+
 
   const resetForm = () => {
     setFormData({
@@ -219,8 +228,8 @@ const handleSubmit = async (e) => {
  const handleCredentialsClose = () => {
   setShowCredentialsModal(false);
   resetForm();
-  onClose();
-  onSuccess();               // ✅ parent fetch/merge karega
+  onClose?.();             // parent modal band
+  window.location.reload(); // ✅ ab close par page reload hoga -> list update
 };
 
 
