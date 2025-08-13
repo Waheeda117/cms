@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { toLocalISODate } from "../../utils/date";
 import { useTheme } from "../../hooks/useTheme";
 import {
   Pill,
@@ -32,6 +33,12 @@ import { useBatchUpdateStore } from "../../store/batchUpdateStore";
 import Modal from "../../components/UI/Modal";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+
+const parseISOToLocalDate = (iso) => {
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
 
 const UpdateBatch = () => {
   const { theme } = useTheme();
@@ -92,15 +99,15 @@ const UpdateBatch = () => {
     user?.role === "admin"
       ? "/admin/inventory-management"
       : user?.role === "pharmacist_inventory"
-      ? "/pharmacist_inventory/inventory-management"
-      : "/inventory-management";
+        ? "/pharmacist_inventory/inventory-management"
+        : "/inventory-management";
 
   const submitRedirectPath =
     user?.role === "admin"
       ? `/admin/inventory-management/${batchId}`
       : user?.role === "pharmacist_inventory"
-      ? `/pharmacist_inventory/inventory-management/${batchId}`
-      : "/inventory-management";
+        ? `/pharmacist_inventory/inventory-management/${batchId}`
+        : "/inventory-management";
 
   // Helper functions for date formatting
   const formatDateForDisplay = (dateString) => {
@@ -196,17 +203,17 @@ const UpdateBatch = () => {
         ) {
           const existingMedicines = Array.isArray(batch.data.medicines)
             ? batch.data.medicines.map((medicine) => {
-                if (!medicine.medicineId) {
-                  const foundMedicine = getMedicineByName(
-                    medicine.medicineName
-                  );
-                  return {
-                    ...medicine,
-                    medicineId: foundMedicine ? foundMedicine.id : null,
-                  };
-                }
-                return medicine;
-              })
+              if (!medicine.medicineId) {
+                const foundMedicine = getMedicineByName(
+                  medicine.medicineName
+                );
+                return {
+                  ...medicine,
+                  medicineId: foundMedicine ? foundMedicine.id : null,
+                };
+              }
+              return medicine;
+            })
             : [];
 
           setMedicines(existingMedicines);
@@ -490,11 +497,11 @@ const UpdateBatch = () => {
       prev.map((medicine, i) =>
         i === index
           ? {
-              ...medicine,
-              price: parseFloat(editValues.price),
-              quantity: parseInt(editValues.quantity),
-              expiryDate: editValues.expiryDate, // Update expiry date
-            }
+            ...medicine,
+            price: parseFloat(editValues.price),
+            quantity: parseInt(editValues.quantity),
+            expiryDate: editValues.expiryDate, // Update expiry date
+          }
           : medicine
       )
     );
@@ -523,7 +530,7 @@ const UpdateBatch = () => {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Failed to finalize batch. Please try again."
+        "Failed to finalize batch. Please try again."
       );
     } finally {
       setFinalizeLoading(false);
@@ -606,7 +613,7 @@ const UpdateBatch = () => {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Failed to update batch. Please try again."
+        "Failed to update batch. Please try again."
       );
     } finally {
       setUpdateLoading(false);
@@ -782,13 +789,11 @@ const UpdateBatch = () => {
                         <li
                           key={medicine.id}
                           onClick={() => handleMedicineSelect(medicine)}
-                          className={`px-4 py-2 cursor-pointer hover:${
-                            theme.cardSecondary
-                          } ${theme.textPrimary} ${
-                            medicine.name === "MISCELLANEOUS"
+                          className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary
+                            } ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS"
                               ? "bg-yellow-50 border-l-4 border-yellow-400"
                               : ""
-                          }`}
+                            }`}
                         >
                           {medicine.name}
                         </li>
@@ -890,13 +895,11 @@ const UpdateBatch = () => {
                       <DatePicker
                         selected={
                           currentMedicine.expiryDate
-                            ? new Date(currentMedicine.expiryDate)
+                            ? parseISOToLocalDate(currentMedicine.expiryDate) // ✅ no UTC shift
                             : null
                         }
                         onChange={(date) => {
-                          const isoDate = date
-                            ? date.toISOString().split("T")[0]
-                            : "";
+                          const isoDate = date ? toLocalISODate(date) : "";   // ✅ safe YYYY-MM-DD
                           setCurrentMedicine((prev) => ({
                             ...prev,
                             expiryDate: isoDate,
@@ -974,9 +977,8 @@ const UpdateBatch = () => {
                     medicines.map((medicine, index) => (
                       <tr
                         key={`${medicine.medicineId}-${index}`}
-                        className={`${
-                          index % 2 === 0 ? theme.card : theme.cardSecondary
-                        } border-b ${theme.borderSecondary}`}
+                        className={`${index % 2 === 0 ? theme.card : theme.cardSecondary
+                          } border-b ${theme.borderSecondary}`}
                       >
                         <td className="px-4 py-3">
                           <div
@@ -1032,22 +1034,22 @@ const UpdateBatch = () => {
                             <DatePicker
                               selected={
                                 editValues.expiryDate
-                                  ? new Date(editValues.expiryDate)
+                                  ? parseISOToLocalDate(editValues.expiryDate) // ✅ no UTC shift
                                   : null
                               }
                               onChange={(date) => {
-                                const isoDate = date
-                                  ? date.toISOString().split("T")[0]
-                                  : "";
+                                const iso = date ? toLocalISODate(date) : "";   // ✅ safe ISO (YYYY-MM-DD)
                                 setEditValues((prev) => ({
                                   ...prev,
-                                  expiryDate: isoDate,
+                                  expiryDate: iso,
                                 }));
                               }}
                               dateFormat="dd/MM/yyyy"
                               minDate={new Date()}
-                              className={`w-32 px-2 py-1 text-center ${theme.input} rounded border ${theme.borderSecondary}`}
+                              placeholderText="DD/MM/YYYY"
+                              className={`w-32 px-2 py-1 text-center ${theme.input} rounded ${theme.borderSecondary} border ${theme.focus} focus:ring-1`}
                             />
+
                           ) : medicine.expiryDate ? (
                             formatDateForDisplay(medicine.expiryDate)
                           ) : (
@@ -1060,12 +1062,12 @@ const UpdateBatch = () => {
                         >
                           {editingIndex === index
                             ? `PKR ${(
-                                parseFloat(editValues.quantity || 0) *
-                                parseFloat(editValues.price || 0)
-                              ).toFixed(2)}`
+                              parseFloat(editValues.quantity || 0) *
+                              parseFloat(editValues.price || 0)
+                            ).toFixed(2)}`
                             : `PKR ${(
-                                medicine.quantity * medicine.price
-                              ).toFixed(2)}`}
+                              medicine.quantity * medicine.price
+                            ).toFixed(2)}`}
                         </td>
 
                         <td
@@ -1276,7 +1278,7 @@ const UpdateBatch = () => {
             <button
               type="button"
               onClick={(e) => handleSubmit(e, true)}
-              disabled={updateLoading || !canUpdateBatch ||  editingIndex !== null}
+              disabled={updateLoading || !canUpdateBatch || editingIndex !== null}
               className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {updateLoading ? (
