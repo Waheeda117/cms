@@ -234,13 +234,13 @@ const ExpireSoonItems = () => {
               Monitor items that will expire within the next 10 days
             </p>
           </div>
-          <button
+          {/* <button
             onClick={handleRefresh}
             disabled={loading}
             className={`p-3 ${theme.cardSecondary} rounded-lg hover:bg-opacity-70 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <RefreshCw className={`w-5 h-5 ${theme.textMuted} ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          </button> */}
         </div>
       </motion.div>
 
@@ -465,9 +465,9 @@ const ExpireSoonItems = () => {
                                       <th className="px-4 py-2 text-left text-xs font-medium">
                                         Batch Number
                                       </th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium">
+                                      {/* <th className="px-4 py-2 text-left text-xs font-medium">
                                         Bill ID
-                                      </th>
+                                      </th> */}
                                       <th className="px-4 py-2 text-center text-xs font-medium">
                                         Quantity
                                       </th>
@@ -494,9 +494,9 @@ const ExpireSoonItems = () => {
                                           <td className="px-4 py-3 text-sm">
                                             {batch.batchNumber}
                                           </td>
-                                          <td className="px-4 py-3 text-sm">
+                                          {/* <td className="px-4 py-3 text-sm">
                                             {batch.billID || 'N/A'}
-                                          </td>
+                                          </td> */}
                                           <td className="px-4 py-3 text-center text-sm font-medium">
                                             {batch.quantity}
                                           </td>
