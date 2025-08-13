@@ -302,7 +302,7 @@ const ExpireSoonItems = () => {
       >
         <div className="p-6">
           {/* Search */}
-          <div className="mb-6">
+          {/* <div className="mb-6">
             <div className="relative">
               <Search
                 className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
@@ -315,7 +315,7 @@ const ExpireSoonItems = () => {
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
               />
             </div>
-          </div>
+          </div> */}
 
           {/* Table */}
           <div className="overflow-x-auto">
