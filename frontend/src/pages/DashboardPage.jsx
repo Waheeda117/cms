@@ -57,7 +57,7 @@ const DashboardPage = () => {
       bgColor: "bg-purple-500 bg-opacity-20 border-purple-500",
     },
     {
-      title: "Active Staff",
+      title: "Total Active Staff",
       value: 24,
       icon: Stethoscope,
       change: "+2",
