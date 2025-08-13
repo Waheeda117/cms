@@ -1,9 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CalendarClock, ChevronRight, Calendar } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+
 
 const ExpiringSoonTable = ({ theme, data }) => {
   const expiringItems = data || [];
+
+  const navigate = useNavigate();
+  
 
   return (
     <div className={`p-6 ${theme.cardOpacity} backdrop-filter backdrop-blur-lg rounded-xl ${theme.border} border`}>
@@ -17,7 +22,7 @@ const ExpiringSoonTable = ({ theme, data }) => {
           </p>
         </div>
         {expiringItems.length > 0 && (
-          <div className="flex items-center text-emerald-500 cursor-pointer">
+          <div onClick={() => navigate(`/pharmacist_inventory/expire-soon-items`)} className="flex items-center text-emerald-500 cursor-pointer">
             <span className="text-sm font-medium mr-1">View All</span>
             <ChevronRight className="w-5 h-5" />
           </div>

@@ -11,7 +11,9 @@ import {
     updateBatchById,
     getBatchById,
     getStockById,
-    getDashboardStats
+    getDashboardStats,
+    getExpireSoonItems,
+    getLowStockItemsEndpoint
 } from "../controllers/inventory.controller.js";
 
 const router = express.Router();
@@ -37,5 +39,8 @@ router.delete("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), del
 router.put("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), updateBatchById);
 
 router.get("/dashboard-stats", authorizeRoles("admin", "pharmacist_inventory"), getDashboardStats);
+
+router.get("/expire-soon-items", authorizeRoles("admin", "pharmacist_inventory"), getExpireSoonItems);
+router.get("/low-stock-items", authorizeRoles("admin", "pharmacist_inventory"), getLowStockItemsEndpoint);
 
 export default router; 

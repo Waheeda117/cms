@@ -1,23 +1,27 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle, ChevronRight, Package } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+
 
 const LowStockAlerts = ({ theme, data }) => {
   const lowStockItems = data || [];
+    const navigate = useNavigate();
+  
 
   return (
     <div className={`p-6 ${theme.cardOpacity} backdrop-filter backdrop-blur-lg rounded-xl ${theme.border} border`}>
       <div className="flex flex-col sm:flex-row gap-5 justify-between mb-6">
         <div>
           <h2 className={`text-xl font-semibold ${theme.textPrimary} mb-1`}>
-            Low Stock Alerts
+            Low Stock Medicines
           </h2>
           <p className={`text-sm ${theme.textMuted}`}>
             Items below reorder level
           </p>
         </div>
         {lowStockItems.length > 0 && (
-          <div className="flex items-center text-emerald-500 cursor-pointer">
+          <div onClick={() => navigate(`/pharmacist_inventory/low-stock-items`)} className="flex items-center text-emerald-500 cursor-pointer">
             <span className="text-sm font-medium mr-1">View All</span>
             <ChevronRight className="w-5 h-5" />
           </div>
