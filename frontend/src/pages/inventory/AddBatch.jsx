@@ -34,6 +34,8 @@ import Modal from "../../components/UI/Modal";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+const normalize = (s = "") => s.toLowerCase().replace(/\s+/g, " ").trim();
+
 const AddBatch = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -59,6 +61,17 @@ const AddBatch = () => {
   const [success, setSuccess] = useState("");
   const [showMedicineDropdown, setShowMedicineDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const normalize = (s = "") => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const filteredOptions = useMemo(() => {
+    const q = normalize(searchTerm);
+    if (!q) return MEDICINES;                    // empty → sab dikhao
+    const words = q.split(" ").filter(Boolean);  // token wise match
+    const list = MEDICINES.filter(m => {
+      const name = normalize(m.name);
+      return words.every(w => name.includes(w));
+    });
+    return list.length ? list : MEDICINES;       // fallback agar zero match
+  }, [searchTerm]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editValues, setEditValues] = useState({
     price: "",
@@ -137,14 +150,7 @@ const AddBatch = () => {
 
   const batchDetails = routeBatchDetails;
 
-  useEffect(() => {
-    if (
-      currentMedicine.medicineName &&
-      currentMedicine.medicineName !== searchTerm
-    ) {
-      setSearchTerm("");
-    }
-  }, [currentMedicine.medicineName]);
+
 
   // Set default expiry date (2 years from now) when component mounts
   useEffect(() => {
@@ -260,29 +266,56 @@ const AddBatch = () => {
     if (error) setError("");
   };
 
+  const handleMedicineNameChange = (e) => {
+    const value = e.target.value;
+
+    setShowMedicineDropdown(true);
+    setSearchTerm(value);
+
+
+    setCurrentMedicine((prev) => ({
+      ...prev,
+      medicineId: null,
+
+    }));
+
+    if (error) setError("");
+  };
   const handleMedicineSelect = (medicine) => {
     const updatedMedicine = {
       ...currentMedicine,
       medicineId: medicine.id,
       medicineName: medicine.name,
       quantity: medicine.id === 1 ? "" : currentMedicine.quantity,
-      price:
-        medicine.id === 1 ? remainingAmount.toFixed(2) : currentMedicine.price,
+      price: medicine.id === 1 ? remainingAmount.toFixed(2) : currentMedicine.price,
       expiryDate: medicine.id === 1 ? "" : currentMedicine.expiryDate,
     };
 
     setCurrentMedicine(updatedMedicine);
+    setSearchTerm(medicine.name);   
     setShowMedicineDropdown(false);
-    setSearchTerm("");
+  
   };
 
   const addMedicineToList = () => {
+    // 
+    // 
+    if (
+      !currentMedicine.medicineId ||
+      !MEDICINES.some(
+        (m) => m.id === currentMedicine.medicineId && m.name === currentMedicine.medicineName
+      )
+    ) {
+      setError("Please select a medicine from the suggestions.");
+      return;
+    }
+
     if (!isMedicineFormValid) {
       setError("Please fill all required fields with valid values");
       return;
     }
 
-    // Check for duplicate medicine
+    // Duplicate check
     const existingMedicine = medicines.find(
       (med) => med.medicineId === currentMedicine.medicineId
     );
@@ -298,13 +331,12 @@ const AddBatch = () => {
       const miscAmount = parseFloat(currentMedicine.price) || 0;
       setMiscellaneousAmount(miscAmount);
     } else {
-      // Calculate what the new total would be if we add this medicine
+      // Add karne se pehle total exceed check
       const newMedicineTotal =
-        parseFloat(currentMedicine.price) * parseInt(currentMedicine.quantity);
+        parseFloat(currentMedicine.price) * parseInt(currentMedicine.quantity, 10);
       const newGrandTotal =
         totalMedicinePrice + newMedicineTotal + miscellaneousAmount;
 
-      // Check if adding this medicine would exceed the total price
       if (newGrandTotal > parseFloat(batchDetails?.overallPrice || 0)) {
         setError("Adding this medicine would exceed the total batch price.");
         return;
@@ -312,14 +344,15 @@ const AddBatch = () => {
 
       addMedicine({
         ...currentMedicine,
-        quantity: parseInt(currentMedicine.quantity),
+        quantity: parseInt(currentMedicine.quantity, 10),
         price: parseFloat(currentMedicine.price),
         expiryDate: currentMedicine.expiryDate,
       });
     }
 
-    // Reset form
+    // Reset + optional: search box clear
     resetCurrentMedicine();
+    setSearchTerm("");
     setError("");
   };
 
@@ -539,7 +572,7 @@ const AddBatch = () => {
           quantity: medicine.quantity,
           price: medicine.price,
           expiryDate: medicine.expiryDate,
-          dateOfPurchase: new Date().toISOString().split("T")[0],
+          dateOfPurchase: toLocalISODate(new Date()),
           reorderLevel: 20,
         })),
       };
@@ -658,42 +691,32 @@ const AddBatch = () => {
           <div className="grid grid-cols-1 gap-6 mb-6">
             {/* Medicine Name */}
             <div className="relative" ref={dropdownRef}>
-              <label
-                className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
-              >
+              <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
                 Medicine Name *
               </label>
+
               <div className="relative">
-                <Pill
-                  className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
-                />
+                <Pill className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme.textMuted}`} />
+
+                {/* ✅ Ab value sirf searchTerm hai */}
                 <input
                   type="text"
-                  name="medicineName"
-                  value={currentMedicine.medicineName || searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setShowMedicineDropdown(true);
-                    updateCurrentMedicineField("medicineName", e.target.value);
-                  }}
+                  name="medicineNameSearch"
+                  value={searchTerm}
+                  onChange={handleMedicineNameChange}
                   onFocus={() => setShowMedicineDropdown(true)}
-                  onBlur={(e) => {
-                    // Small delay to allow dropdown item clicks to register
-                    setTimeout(() => {
-                      if (
-                        !dropdownRef.current?.contains(document.activeElement)
-                      ) {
-                        setShowMedicineDropdown(false);
-                      }
-                    }, 150);
+                  onBlur={() => {
+                    // thora delay taake list click register ho jaye
+                    setTimeout(() => setShowMedicineDropdown(false), 120);
                   }}
                   className={`w-full pl-10 pr-10 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
                   placeholder="Search medicine..."
                 />
+
                 <button
                   type="button"
-                  onClick={() => setShowMedicineDropdown(!showMedicineDropdown)}
-                  className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${theme.textMuted}`}
+                  onClick={() => setShowMedicineDropdown((s) => !s)}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`}
                 >
                   <ChevronDown className="w-5 h-5" />
                 </button>
@@ -704,25 +727,17 @@ const AddBatch = () => {
                   className={`absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-md ${theme.card} shadow-lg ${theme.border} border`}
                 >
                   <ul>
-                    {MEDICINES.filter((medicine) =>
-                      medicine.name
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase())
-                    )
-                      .slice(0, 10)
-                      .map((medicine) => (
-                        <li
-                          key={medicine.id}
-                          onClick={() => handleMedicineSelect(medicine)}
-                          className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary
-                            } ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS"
-                              ? "bg-yellow-50 border-l-4 border-yellow-400"
-                              : ""
-                            }`}
-                        >
-                          {medicine.name}
-                        </li>
-                      ))}
+                    {filteredOptions.slice(0, 10).map((medicine) => (
+                      <li
+                        key={medicine.id}
+                        // onMouseDown blur se pehle fire hota — click reliably capture hota
+                        onMouseDown={() => handleMedicineSelect(medicine)}
+                        className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary} ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS" ? "bg-yellow-50 border-l-4 border-yellow-400" : ""
+                          }`}
+                      >
+                        {medicine.name}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}

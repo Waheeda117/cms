@@ -27,7 +27,13 @@ import DeleteConfirmationModal from '../../components/admin/DeleteConfirmationMo
 const AllUsers = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const [activeTab, setActiveTab] = useState('doctor');
+  const [activeTab, setActiveTab] = useState(() => {
+  return localStorage.getItem('userMgmt.activeTab') || 'doctor';
+});
+ useEffect(() => {
+    localStorage.setItem('userMgmt.activeTab', activeTab);
+  }, [activeTab]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [usersData, setUsersData] = useState(null);
   const [loading, setLoading] = useState(true);
