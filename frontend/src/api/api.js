@@ -55,6 +55,15 @@ export const registerPharmacistInventory = async (userData) => {
   }
 };
 
+export const registerPharmacistInventoryStaff = async (userData) => {
+  try {
+    const response = await axiosInstance.post('/admin/register/pharmacist-inventory-staff', userData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // API call to get all user data
 export const getUsersData = async () => {
   try {

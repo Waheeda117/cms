@@ -135,9 +135,10 @@ const AllUsers = () => {
   // Calculate summary statistics from the real data
 const SHOWN_ROLES = [
   "doctor",
-  "receptionist",
+  "receptionist", 
   "pharmacist_dispenser",
   "pharmacist_inventory",
+  "pharmacist_inventory_staff",
 ];
 
 // safe users list
@@ -151,14 +152,14 @@ const byRole = usersList.reduce((acc, u) => {
 }, {});
 
 // individual counts used everywhere else (tabs + cards)
-const doctorCount       = byRole.doctor || 0;
+const doctorCount = byRole.doctor || 0;
 const receptionistCount = byRole.receptionist || 0;
-const dispenserCount    = byRole.pharmacist_dispenser || 0;
-const inventoryCount    = byRole.pharmacist_inventory || 0;
+const dispenserCount = byRole.pharmacist_dispenser || 0;
+const inventoryCount = byRole.pharmacist_inventory || 0;
+const inventoryStaffCount = byRole.pharmacist_inventory_staff || 0;
 
-// ✅ Total Users = sum of shown tabs (so it matches the badges)
 const totalUsers =
-  doctorCount + receptionistCount + dispenserCount + inventoryCount;
+  doctorCount + receptionistCount + dispenserCount + inventoryCount + inventoryStaffCount;
 
 // Active Users = only within shown roles
 const activeUsers = usersList.filter((u) => {
@@ -166,43 +167,44 @@ const activeUsers = usersList.filter((u) => {
   return SHOWN_ROLES.includes(r) && !!u?.isActive;
 }).length;
 
-  const tabs = [
-    { id: 'doctor', label: 'Doctors', icon: Stethoscope, count: doctorCount },
-    { id: 'receptionist', label: 'Receptionists', icon: UserCheck, count: receptionistCount },
-    { id: 'pharmacist_dispenser', label: 'Dispensers', icon: Pill, count: dispenserCount },
-    { id: 'pharmacist_inventory', label: 'Inventory', icon: Package, count: inventoryCount }
-  ];
+const tabs = [
+  { id: 'doctor', label: 'Doctors', icon: Stethoscope, count: doctorCount },
+  { id: 'receptionist', label: 'Receptionists', icon: UserCheck, count: receptionistCount },
+  { id: 'pharmacist_dispenser', label: 'Dispensers', icon: Pill, count: dispenserCount },
+  { id: 'pharmacist_inventory', label: 'Inventory', icon: Package, count: inventoryCount },
+  { id: 'pharmacist_inventory_staff', label: 'Inventory Staff', icon: Package, count: inventoryStaffCount }
+];
 
-  const summaryCards = [
-    {
-      title: 'Total Users',
-      value: totalUsers,
-      icon: Users,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500 bg-opacity-20 border-blue-500'
-    },
-    {
-      title: 'Active Users',
-      value: activeUsers,
-      icon: UserCheck,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500 bg-opacity-20 border-green-500'
-    },
-    {
-      title: 'Doctors',
-      value: doctorCount,
-      icon: Stethoscope,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500 bg-opacity-20 border-purple-500'
-    },
-    {
-      title: 'Staff Members',
-      value: receptionistCount + dispenserCount + inventoryCount,
-      icon: Users,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500 bg-opacity-20 border-orange-500'
-    }
-  ];
+const summaryCards = [
+  {
+    title: 'Total Users',
+    value: totalUsers,
+    icon: Users,
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500 bg-opacity-20 border-blue-500'
+  },
+  {
+    title: 'Active Users',
+    value: activeUsers,
+    icon: UserCheck,
+    color: 'text-green-500',
+    bgColor: 'bg-green-500 bg-opacity-20 border-green-500'
+  },
+  {
+    title: 'Doctors',
+    value: doctorCount,
+    icon: Stethoscope,
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-500 bg-opacity-20 border-purple-500'
+  },
+  {
+    title: 'Staff Members',
+    value: receptionistCount + dispenserCount + inventoryCount + inventoryStaffCount, // Update this line
+    icon: Users,
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-500 bg-opacity-20 border-orange-500'
+  }
+];
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -222,26 +224,27 @@ const activeUsers = usersList.filter((u) => {
     });
   };
 
-  const getTabTitle = (tabId) => {
-    const tabTitles = {
-      doctor: { title: 'Medical Doctors', subtitle: 'Manage registered doctors and their specializations' },
-      receptionist: { title: 'Reception Staff', subtitle: 'Manage front desk and patient service staff' },
-      pharmacist_dispenser: { title: 'Pharmacy Dispensers', subtitle: 'Manage medication dispensing staff' },
-      pharmacist_inventory: { title: 'Inventory Pharmacists', subtitle: 'Manage pharmacy inventory and stock control staff' }
-    };
-    return tabTitles[tabId];
+const getTabTitle = (tabId) => {
+  const tabTitles = {
+    doctor: { title: 'Medical Doctors', subtitle: 'Manage registered doctors and their specializations' },
+    receptionist: { title: 'Reception Staff', subtitle: 'Manage front desk and patient service staff' },
+    pharmacist_dispenser: { title: 'Pharmacy Dispensers', subtitle: 'Manage medication dispensing staff' },
+    pharmacist_inventory: { title: 'Inventory Pharmacists', subtitle: 'Manage pharmacy inventory and stock control staff' },
+    pharmacist_inventory_staff: { title: 'Inventory Staff', subtitle: 'Manage pharmacy inventory support staff' }
   };
+  return tabTitles[tabId];
+};
 
-  const getAddButtonText = (tabId) => {
-    const addTexts = {
-      doctor: 'Add Doctor',
-      receptionist: 'Add Receptionist',
-      pharmacist_dispenser: 'Add Dispenser',
-      pharmacist_inventory: 'Add Inventory Staff'
-    };
-    return addTexts[tabId] || 'Add User';
+const getAddButtonText = (tabId) => {
+  const addTexts = {
+    doctor: 'Add Doctor',
+    receptionist: 'Add Receptionist',
+    pharmacist_dispenser: 'Add Dispenser',
+    pharmacist_inventory: 'Add Inventory Admin',
+    pharmacist_inventory_staff: 'Add Inventory Staff' 
   };
-
+  return addTexts[tabId] || 'Add User';
+};
   const renderTableHeader = (tabId) => {
     const commonHeaders = ['Name', 'Gender', 'Phone', 'Status', 'Last Login', 'Actions'];
     

@@ -98,15 +98,15 @@ const UpdateBatch = () => {
   const redirectPath =
     user?.role === "admin"
       ? "/admin/inventory-management"
-      : user?.role === "pharmacist_inventory"
-        ? "/pharmacist_inventory/inventory-management"
+      : user?.role === "pharmacist_inventory_staff"
+        ? "/pharmacist_inventory_staff/inventory-management"
         : "/inventory-management";
 
   const submitRedirectPath =
     user?.role === "admin"
       ? `/admin/inventory-management/${batchId}`
-      : user?.role === "pharmacist_inventory"
-        ? `/pharmacist_inventory/inventory-management/${batchId}`
+      : user?.role === "pharmacist_inventory_staff"
+        ? `/pharmacist_inventory_staff/inventory-management/${batchId}`
         : "/inventory-management";
 
   // Helper functions for date formatting

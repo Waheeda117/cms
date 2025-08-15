@@ -33,6 +33,7 @@ const Sidebar = ({ isOpen, isMiniMode, onToggleMiniMode, onClose, isMobile }) =>
   // Role-specific additional items
   const roleSpecificItems = {
     admin: [
+          { icon: Home, label: 'Dashboard', path: '', color: 'text-blue-500' },
       { icon: Users, label: 'Users', path: '/user-management', color: 'text-green-500' },
       // { icon: Box, label: 'Inventory', path: '/inventory-management', color: 'text-yellow-500' },
       { icon: Pill, label: 'Stocks', path: '/all-stocks', color: 'text-teal-600' },
@@ -41,21 +42,35 @@ const Sidebar = ({ isOpen, isMiniMode, onToggleMiniMode, onClose, isMobile }) =>
       { icon: Settings, label: 'Settings', path: '/settings', color: 'text-gray-500' },
     ],
     doctor: [
+          { icon: Home, label: 'Dashboard', path: '', color: 'text-blue-500' },
+
       { icon: Stethoscope, label: 'Consultations', path: '/consultations', color: 'text-teal-500' },
       { icon: Calendar, label: 'Schedule', path: '/appointments', color: 'text-purple-500' },
       { icon: Settings, label: 'Settings', path: '/settings', color: 'text-gray-500' },
     ],
     pharmacist_dispenser: [
+          { icon: Home, label: 'Dashboard', path: '', color: 'text-blue-500' },
+
       { icon: ShoppingCart, label: 'Prescriptions', path: '/prescriptions', color: 'text-purple-600' },
       { icon: Settings, label: 'Settings', path: '/settings', color: 'text-gray-500' },
     ],
     pharmacist_inventory: [
+          { icon: Home, label: 'Dashboard', path: '', color: 'text-blue-500' },
+
+      // { icon: Box, label: 'Inventory', path: '/inventory-management', color: 'text-teal-600' },
+      // { icon: Pill, label: 'Stocks', path: '/all-stocks', color: 'text-purple-600' },
+      // { icon: FileText, label: 'Reports', path: '/reports', color: 'text-orange-500' },
+      { icon: Settings, label: 'Settings', path: '/settings', color: 'text-gray-500' },
+    ],
+    pharmacist_inventory_staff: [
       { icon: Box, label: 'Inventory', path: '/inventory-management', color: 'text-teal-600' },
       // { icon: Pill, label: 'Stocks', path: '/all-stocks', color: 'text-purple-600' },
       // { icon: FileText, label: 'Reports', path: '/reports', color: 'text-orange-500' },
       { icon: Settings, label: 'Settings', path: '/settings', color: 'text-gray-500' },
     ],
     receptionist: [
+          { icon: Home, label: 'Dashboard', path: '', color: 'text-blue-500' },
+
       { icon: Calendar, label: 'Appointments', path: '/appointments', color: 'text-purple-500' },
       // { icon: FileText, label: 'Reports', path: '/reports', color: 'text-orange-500' },
       { icon: Settings, label: 'Settings', path: '/settings', color: 'text-gray-500' },
@@ -75,7 +90,7 @@ const Sidebar = ({ isOpen, isMiniMode, onToggleMiniMode, onClose, isMobile }) =>
       path: `${rolePrefix}${item.path}`
     }));
 
-    return [...baseItems, ...specificItems];
+    return [...specificItems];
   };
 
   const menuItems = getRoleBasedMenuItems();
