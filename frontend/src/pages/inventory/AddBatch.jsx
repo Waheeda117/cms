@@ -582,7 +582,7 @@ const AddBatch = () => {
         </h1>
 
         {/* Batch Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-5xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div
             className={`p-4 rounded-lg ${theme.cardSecondary} border ${theme.borderSecondary}`}
           >
