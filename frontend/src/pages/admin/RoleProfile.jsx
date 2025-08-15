@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTheme } from "../../hooks/useTheme";
@@ -46,11 +46,12 @@ const RoleProfile = () => {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [resetCredentials, setResetCredentials] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
-  const handleProfileUpdate = (updatedUser) => {
-    setUserData(updatedUser);
-    // Show success message or notification here if needed
+  const handleProfileUpdate = async (updatedUser, options = {}) => {
+    if (updatedUser) setUserData(updatedUser);
+    if (!options.skipRefetch) {
+      await fetchUser();
+    }
   };
-
   // Add this function to handle copying to clipboard
   const copyToClipboard = async (text, fieldName) => {
     try {
@@ -107,24 +108,25 @@ const RoleProfile = () => {
   };
 
   // Fetch user data from API
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setLoading(true);
-        const response = await getUserDataByRoleAndId(role, id);
-        setUserData(response.user);
-      } catch (err) {
-        console.error("Error fetching user data:", err);
-        setError("Failed to fetch user data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (role && id) {
-      fetchUserData();
+  const fetchUser = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getUserDataByRoleAndId(role, id);
+      setUserData(response.user);
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      setError("Failed to fetch user data");
+    } finally {
+      setLoading(false);
     }
   }, [role, id]);
+
+  // Mount/update par fetch call
+  useEffect(() => {
+    if (role && id) {
+      fetchUser();
+    }
+  }, [role, id, fetchUser]);
 
   // Loading state
   if (loading) {
@@ -470,19 +472,21 @@ const RoleProfile = () => {
                 </div>
 
                 {/* Email */}
-                <div className={`p-4 ${theme.cardSecondary} rounded-lg`}>
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div className="p-2 rounded-lg bg-blue-500 bg-opacity-20 border border-blue-500">
-                      <Mail className="w-4 h-4 text-blue-500" />
+                {userData.email && (
+                  <div className={`p-4 ${theme.cardSecondary} rounded-lg`}>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="p-2 rounded-lg bg-blue-500 bg-opacity-20 border border-blue-500">
+                        <Mail className="w-4 h-4 text-blue-500" />
+                      </div>
+                      <span className={`text-sm font-medium ${theme.textMuted}`}>
+                        Email Address
+                      </span>
                     </div>
-                    <span className={`text-sm font-medium ${theme.textMuted}`}>
-                      Email Address
-                    </span>
+                    <p className={`font-semibold ${theme.textPrimary} ml-11`}>
+                      {userData.email || "—"}
+                    </p>
                   </div>
-                  <p className={`font-semibold ${theme.textPrimary} ml-11`}>
-                    {userData.email}
-                  </p>
-                </div>
+                )}
 
                 {/* CNIC */}
                 <div className={`p-4 ${theme.cardSecondary} rounded-lg`}>
@@ -528,7 +532,7 @@ const RoleProfile = () => {
                       <span
                         className={`text-sm font-medium ${theme.textMuted}`}
                       >
-                        Gender
+                        Gender*
                       </span>
                     </div>
                     <p className={`font-semibold ${theme.textPrimary} ml-11`}>

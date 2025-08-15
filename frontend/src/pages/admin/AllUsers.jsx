@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme';
@@ -133,12 +133,38 @@ const AllUsers = () => {
   }
 
   // Calculate summary statistics from the real data
-  const totalUsers = usersData?.quickSummary?.totalUsers || 0;
-  const activeUsers = usersData?.users?.filter(user => user.isActive).length || 0;
-  const doctorCount = usersData?.roles?.doctor || 0;
-  const receptionistCount = usersData?.roles?.receptionist || 0;
-  const dispenserCount = usersData?.roles?.pharmacist_dispenser || 0;
-  const inventoryCount = usersData?.roles?.pharmacist_inventory || 0;
+const SHOWN_ROLES = [
+  "doctor",
+  "receptionist",
+  "pharmacist_dispenser",
+  "pharmacist_inventory",
+];
+
+// safe users list
+const usersList = Array.isArray(usersData?.users) ? usersData.users : [];
+
+// role-wise counts (from users list, not quickSummary/roles)
+const byRole = usersList.reduce((acc, u) => {
+  const r = String(u?.role || "").toLowerCase();
+  if (SHOWN_ROLES.includes(r)) acc[r] = (acc[r] || 0) + 1;
+  return acc;
+}, {});
+
+// individual counts used everywhere else (tabs + cards)
+const doctorCount       = byRole.doctor || 0;
+const receptionistCount = byRole.receptionist || 0;
+const dispenserCount    = byRole.pharmacist_dispenser || 0;
+const inventoryCount    = byRole.pharmacist_inventory || 0;
+
+// ✅ Total Users = sum of shown tabs (so it matches the badges)
+const totalUsers =
+  doctorCount + receptionistCount + dispenserCount + inventoryCount;
+
+// Active Users = only within shown roles
+const activeUsers = usersList.filter((u) => {
+  const r = String(u?.role || "").toLowerCase();
+  return SHOWN_ROLES.includes(r) && !!u?.isActive;
+}).length;
 
   const tabs = [
     { id: 'doctor', label: 'Doctors', icon: Stethoscope, count: doctorCount },

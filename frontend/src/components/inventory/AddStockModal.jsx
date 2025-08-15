@@ -37,7 +37,7 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
 
   const handleBatchInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Special handling for billID (cheque number) - only allow numeric input
     if (name === 'billID') {
       // Remove any non-numeric characters
@@ -52,11 +52,11 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
   const handleChequeNumberKeyPress = (e) => {
     // Allow backspace, delete, tab, escape, enter, and arrow keys
     if ([8, 9, 27, 13, 46, 37, 39, 38, 40].indexOf(e.keyCode) !== -1 ||
-        // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-        (e.keyCode === 65 && e.ctrlKey === true) ||
-        (e.keyCode === 67 && e.ctrlKey === true) ||
-        (e.keyCode === 86 && e.ctrlKey === true) ||
-        (e.keyCode === 88 && e.ctrlKey === true)) {
+      // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+      (e.keyCode === 65 && e.ctrlKey === true) ||
+      (e.keyCode === 67 && e.ctrlKey === true) ||
+      (e.keyCode === 86 && e.ctrlKey === true) ||
+      (e.keyCode === 88 && e.ctrlKey === true)) {
       return;
     }
     // Ensure that it is a number and stop the keypress
@@ -86,8 +86,7 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
   };
 
   const handleNext = () => {
-    if (!isBatchValid) return;
-
+    if (!isBatchValid || uploading) return;
     // Reset validation error
     setValidationError("");
 
@@ -132,7 +131,7 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
       isOpen={isOpen}
       onClose={onClose}
       title="Batch Details"
-      // subtitle="Add new medicine batch to your inventory"
+    // subtitle="Add new medicine batch to your inventory"
     >
       <div className="p-6 space-y-6">
         <div className="flex justify-center mb-6">
@@ -247,11 +246,15 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
               />
               <button
                 type="button"
-                onClick={() => fileInputRef.current.click()}
+                onClick={() => !uploading && fileInputRef.current.click()}
                 className={`w-full px-10 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200 text-left`}
                 disabled={uploading}
               >
-                {uploading ? "Uploading..." : "Select Attachments"}
+                {uploading
+                 ? "Uploading..."
+                  : attachments.length
+                  ? `Select Attachments  •  ${attachments.length} file(s) added`
+                  : "Select Attachments"}
               </button>
             </div>
           </div>
@@ -290,10 +293,11 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
             <button
               type="button"
               onClick={handleNext}
-              disabled={!isBatchValid}
-              className={`px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <span>Add</span>
+              disabled={!isBatchValid || uploading}
+              className={`px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}           
+              
+              >
+               <span>{uploading ? "Uploading…" : "Add"}</span>
             </button>
           </div>
         </div>
