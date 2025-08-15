@@ -317,6 +317,73 @@ export const registerPharmacistInventoryFromAdmin = async (req: Request<{}, {}, 
     }
 };
 
+export const registerPharmacistInventoryStaffFromAdmin = async (req: Request<{}, {}, UserRegistrationData>, res: Response): Promise<void> => {
+    try {
+        const { 
+            email, 
+            password, 
+            firstName, 
+            lastName, 
+            cnic, 
+            phoneNumber, 
+            address, 
+            gender 
+        } = req.body;
+
+        // Validate required fields
+        if (!firstName || !lastName || !password || !phoneNumber || !address || !gender) {
+            res.status(400).json({
+                success: false,
+                message: "All required fields must be provided for pharmacist_inventory_staff registration"
+            });
+            return;
+        }
+
+        // CNIC validation (optional)
+        if (cnic && !/^\d{5}-\d{7}-\d{1}$/.test(cnic)) {
+            res.status(400).json({ 
+                success: false, 
+                message: "CNIC must be in format: 12345-1234567-1" 
+            });
+            return;
+        }
+
+        // Generate unique username
+        const username = await generateUniqueUsername(firstName, lastName);
+
+        // Hash password
+        const hashedPassword = await bcryptjs.hash(password, 10);
+
+        // Create pharmacist_inventory_staff user
+        const pharmacistInventoryStaff = new User({
+            email: email || undefined, // Don't set email to null, set it as undefined if not provided
+            password: hashedPassword,
+            firstName,
+            lastName,
+            username,
+            isDefaultPassword: true,
+            cnic: cnic || undefined, // Don't set cnic to null, set it as undefined if not provided
+            role: "pharmacist_inventory_staff",
+            phoneNumber,
+            address,
+            gender,
+            isActive: true,
+            isVerified: false
+        });
+
+        await pharmacistInventoryStaff.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Pharmacist Inventory Staff registered successfully",
+            user: { ...pharmacistInventoryStaff.toObject(), password: undefined }
+        });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        res.status(400).json({ success: false, message: errorMessage });
+    }
+};
+
 export const getAllUsersData = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         // Fetch all users, excluding passwords
@@ -333,7 +400,8 @@ export const getAllUsersData = async (req: AuthenticatedRequest, res: Response):
             doctor: 0,
             receptionist: 0,
             pharmacist_dispenser: 0,
-            pharmacist_inventory: 0
+            pharmacist_inventory: 0,
+            pharmacist_inventory_staff: 0 // Add this new role
         };
 
         // Populate the role counts
@@ -367,7 +435,7 @@ export const getUserDataByRoleAndId = async (req: Request<{ role: string; id: st
         const { role, id } = req.params;
 
         // Validate that the role is one of the allowed roles
-        const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory"];
+        const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory", "pharmacist_inventory_staff"]; // Add the new role
         if (!validRoles.includes(role)) {
             res.status(400).json({ success: false, message: "Invalid role" });
             return;
@@ -399,14 +467,14 @@ export const updateUserDataByRoleAndId = async (req: Request<{ role: string; id:
         const { role, id } = req.params;
         const updatedData = req.body;
 
-
-        // Validate that the role is one of the role is allowed is allowed
-        const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory"];
+        // Validate that the role is one of the allowed roles
+        const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory", "pharmacist_inventory_staff"]; // Add the new role
         if (!validRoles.includes(role)) {
             res.status(400).json({ success: false, message: "Invalid role" });
             return;
         }
 
+        // ... rest of the function remains the same
         // Find the user by role and ID
         const user = await User.findOne({ _id: id, role: role });
 
@@ -541,7 +609,7 @@ export const deleteUserDataByRoleAndId = async (req: Request<{ role: string; id:
         const { role, id } = req.params;
 
         // Validate that the role is one of the allowed roles
-        const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory"];
+        const validRoles = ["doctor", "receptionist", "pharmacist_dispenser", "pharmacist_inventory", "pharmacist_inventory_staff"]; // Add the new role
         if (!validRoles.includes(role)) {
             res.status(400).json({ success: false, message: "Invalid role" });
             return;
@@ -564,4 +632,4 @@ export const deleteUserDataByRoleAndId = async (req: Request<{ role: string; id:
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         res.status(500).json({ success: false, message: errorMessage });
     }
-}; 
+};

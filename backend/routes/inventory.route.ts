@@ -22,21 +22,21 @@ const router = express.Router();
 router.use(verifyToken);
 
 // Route for adding finalized batch (existing)
-router.post("/add-batch", authorizeRoles("admin", "pharmacist_inventory"), addToStock); 
+router.post("/add-batch", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inventory_staff"), addToStock); 
 
 // NEW: Route for adding draft batch
-router.post("/add-draft-batch", authorizeRoles("admin", "pharmacist_inventory"), addDraftBatch);
+router.post("/add-draft-batch", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inventory_staff"), addDraftBatch);
 
 // NEW: Route for finalizing draft batch
-router.put("/finalize-batch/:id", authorizeRoles("admin", "pharmacist_inventory"), finalizeDraftBatch);
+router.put("/finalize-batch/:id", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inventory_staff"), finalizeDraftBatch);
 
 // Common routes (handle both draft and finalized)
-router.get("/batches", authorizeRoles("admin", "pharmacist_inventory"), stockList); 
+router.get("/batches", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inventory_staff"), stockList); 
 router.get("/all-medicines", authorizeRoles("admin", "pharmacist_inventory"), allStocksList);
-router.get("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), getBatchById);
+router.get("/batch/:id", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inventory_staff"), getBatchById);
 router.get("/stock/:medicineName", authorizeRoles("admin", "pharmacist_inventory"), getStockById);
-router.delete("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), deleteStockById);
-router.put("/batch/:id", authorizeRoles("admin", "pharmacist_inventory"), updateBatchById);
+router.delete("/batch/:id", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inventory_staff"), deleteStockById);
+router.put("/batch/:id", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inventory_staff"), updateBatchById);
 
 router.get("/dashboard-stats", authorizeRoles("admin", "pharmacist_inventory"), getDashboardStats);
 

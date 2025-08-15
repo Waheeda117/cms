@@ -7,7 +7,7 @@ export interface IUser extends Document {
   lastName: string;
   username: string;
   cnic?: string;
-  role: 'admin' | 'doctor' | 'receptionist' | 'pharmacist_dispenser' | 'pharmacist_inventory';
+  role: 'admin' | 'doctor' | 'receptionist' | 'pharmacist_dispenser' | 'pharmacist_inventory' | 'pharmacist_inventory_staff';
   isDefaultPassword: boolean;
   lastLogin: Date;
   isVerified: boolean;
@@ -76,6 +76,7 @@ const userSchema = new Schema<IUser>(
         "receptionist",
         "pharmacist_dispenser",
         "pharmacist_inventory",
+        "pharmacist_inventory_staff",
       ],
       required: true,
     },

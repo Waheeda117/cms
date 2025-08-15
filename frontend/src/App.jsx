@@ -67,7 +67,14 @@ const RedirectAuthenticatedUser = ({ children }) => {
 // Helper component to redirect root "/" to role-based route
 const RoleBasedRedirect = () => {
   const { user } = useAuthStore();
-  const roleRoute = `/${user.role}`;
+  
+  let roleRoute;
+  if (user.role === "pharmacist_inventory_staff") {
+    roleRoute = "/pharmacist_inventory_staff/inventory-management";
+  } else {
+    roleRoute = `/${user.role}`;
+  }
+  
   return <Navigate to={roleRoute} replace />;
 };
 
@@ -321,7 +328,7 @@ function App() {
             path="/:role/inventory-management/:batchId"
             element={
               <ProtectedRoute>
-                <RoleProtectedRoute allowedRoles={["admin", "pharmacist_inventory"]}>
+                <RoleProtectedRoute allowedRoles={["admin", "pharmacist_inventory", "pharmacist_inventory_staff"]}>
                   <BatchByID />
                 </RoleProtectedRoute>
               </ProtectedRoute>
@@ -341,7 +348,7 @@ function App() {
             path="/add-batch"
             element={
               <ProtectedRoute>
-                <RoleProtectedRoute allowedRoles={["admin", "pharmacist_inventory"]}>
+                <RoleProtectedRoute allowedRoles={["admin", "pharmacist_inventory","pharmacist_inventory_staff"]}>
                   <AddBatch />
                 </RoleProtectedRoute>
               </ProtectedRoute>
@@ -351,7 +358,7 @@ function App() {
             path="/update-batch/:batchId"
             element={
               <ProtectedRoute>
-                <RoleProtectedRoute allowedRoles={["admin", "pharmacist_inventory"]}>
+                <RoleProtectedRoute allowedRoles={["admin", "pharmacist_inventory", "pharmacist_inventory_staff"]}>
                   <UpdateBatch />
                 </RoleProtectedRoute>
               </ProtectedRoute>
@@ -692,6 +699,35 @@ function App() {
                   <GenericPage
                     title="Settings Page"
                     role="pharmacist_inventory"
+                  />
+                </RoleProtectedRoute>
+              </ProtectedRoute>
+            }
+          />
+
+
+          {/* Pharmacist Inventory Staff Routes */}
+
+          <Route
+            path="/pharmacist_inventory_staff/inventory-management"
+            element={
+              <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={["pharmacist_inventory_staff"]}>
+                  <Stocks />
+                </RoleProtectedRoute>
+              </ProtectedRoute>
+            }
+          />
+
+
+          <Route
+            path="/pharmacist_inventory_staff/settings"
+            element={
+              <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={["pharmacist_inventory_staff"]}>
+                  <GenericPage
+                    title="Settings Page"
+                    role="pharmacist_inventory_staff"
                   />
                 </RoleProtectedRoute>
               </ProtectedRoute>

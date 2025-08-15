@@ -26,35 +26,39 @@ const DeleteConfirmationModal = ({ isOpen, onClose, userData, onSuccess }) => {
     }
   }, [isOpen]);
 
-  const getRoleIcon = (role) => {
-    const roleIcons = {
-      doctor: Stethoscope,
-      receptionist: UserCheck,
-      pharmacist_dispenser: Pill,
-      pharmacist_inventory: Package,
-    };
-    return roleIcons[role] || User;
+const getRoleIcon = (role) => {
+  const roleIcons = {
+    doctor: Stethoscope,
+    receptionist: UserCheck,
+    pharmacist_dispenser: Pill,
+    pharmacist_inventory: Package,
+    pharmacist_inventory_staff: Package,
   };
+  return roleIcons[role] || User;
+};
 
-  const getRoleColor = (role) => {
-    const roleColors = {
-      doctor: 'text-purple-500',
-      receptionist: 'text-blue-500',
-      pharmacist_dispenser: 'text-green-500',
-      pharmacist_inventory: 'text-orange-500',
-    };
-    return roleColors[role] || 'text-gray-500';
-  };
 
-  const formatRoleName = (role) => {
-    const roleNames = {
-      doctor: 'Medical Doctor',
-      receptionist: 'Receptionist',
-      pharmacist_dispenser: 'Pharmacy Dispenser',
-      pharmacist_inventory: 'Inventory Pharmacist',
-    };
-    return roleNames[role] || role;
+const getRoleColor = (role) => {
+  const roleColors = {
+    doctor: 'text-purple-500',
+    receptionist: 'text-blue-500',
+    pharmacist_dispenser: 'text-green-500',
+    pharmacist_inventory: 'text-orange-500',
+    pharmacist_inventory_staff: 'text-teal-500',
   };
+  return roleColors[role] || 'text-gray-500';
+};
+
+const formatRoleName = (role) => {
+  const roleNames = {
+    doctor: 'Medical Doctor',
+    receptionist: 'Receptionist',
+    pharmacist_dispenser: 'Pharmacy Dispenser',
+    pharmacist_inventory: 'Inventory Pharmacist',
+    pharmacist_inventory_staff: 'Inventory Staff',
+  };
+  return roleNames[role] || role;
+};
 
   const handleDelete = async () => {
     setLoading(true);

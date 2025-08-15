@@ -156,7 +156,7 @@ const AllStocks = () => {
       bgColor: "bg-purple-500 bg-opacity-20 border-purple-500",
     },
     {
-      title: "Total Value",
+      title: "Price",
       value: stockData?.data?.summary?.totalInventoryValue
         ? `Rs.${stockData.data.summary.totalInventoryValue.toFixed(0)}`
         : "Rs. 0",

@@ -24,6 +24,7 @@ import {
   registerReceptionist,
   registerPharmacistDispenser,
   registerPharmacistInventory,
+  registerPharmacistInventoryStaff,
 } from "../../api/api";
 import CNICInput from "../CNICInput";
 import { SPECIALITIES, GENDERS } from "../../constants/selectOptions";
@@ -136,8 +137,7 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
     return true;
   };
 
-///aaa/a/a
- const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (!validateForm()) return;
@@ -163,37 +163,37 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
       case "pharmacist_inventory":
         response = await registerPharmacistInventory(submitData);
         break;
+      case "pharmacist_inventory_staff": // Add this new case
+        response = await registerPharmacistInventoryStaff(submitData);
+        break;
       default:
         throw new Error("Invalid role");
     }
 
-    // Message set (fallback rakha hai)
+    // Rest of the function remains the same...
     setSuccess((response && response.message) ? response.message : "User registered successfully");
 
-    // API se naya user safely nikaal lo (shape flexible rakhi hai)
     const createdUser =
       (response && response.user) ||
       (response && response.data && response.data.user) ||
       null;
 
-    // Credentials modal ke liye username — API se ya fallback (displayUsername tumhari file me pehle se defined hai)
     setNewUserCredentials({
       username: (createdUser && createdUser.username) || displayUsername || "",
       password: "abc12345",
     });
     setShowCredentialsModal(true);
 
-    // Parent ko notify (list refetch) + modal close + form reset
-    // setTimeout(() => {
-    //   if (onSuccess) onSuccess(createdUser);
-    //   if (onClose) onClose();
-    //   resetForm();
-    // }, 1500);
+    console.log(createdUser)
+
   } catch (err) {
+    console.log(err)
+    console.log(error)
     setError(
       (err && err.response && err.response.data && err.response.data.message) ||
         "Registration failed. Please try again."
     );
+
   } finally {
     setLoading(false);
   }
@@ -233,39 +233,46 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
 };
 
 
-  const getRoleConfig = () => {
-    const configs = {
-      doctor: {
-        title: "Register New Doctor",
-        subtitle: "Add a new medical doctor to the system",
-        icon: Stethoscope,
-        color: "text-purple-500",
-        bgColor: "bg-purple-500",
-      },
-      receptionist: {
-        title: "Register New Receptionist",
-        subtitle: "Add a new receptionist to the front desk team",
-        icon: User,
-        color: "text-blue-500",
-        bgColor: "bg-blue-500",
-      },
-      pharmacist_dispenser: {
-        title: "Register New Dispenser",
-        subtitle: "Add a new pharmacy dispenser to the team",
-        icon: Users,
-        color: "text-green-500",
-        bgColor: "bg-green-500",
-      },
-      pharmacist_inventory: {
-        title: "Register New Inventory Staff",
-        subtitle: "Add a new inventory pharmacist to the team",
-        icon: Users,
-        color: "text-orange-500",
-        bgColor: "bg-orange-500",
-      },
-    };
-    return configs[role] || configs.doctor;
+const getRoleConfig = () => {
+  const configs = {
+    doctor: {
+      title: "Register New Doctor",
+      subtitle: "Add a new medical doctor to the system",
+      icon: Stethoscope,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500",
+    },
+    receptionist: {
+      title: "Register New Receptionist",
+      subtitle: "Add a new receptionist to the front desk team",
+      icon: User,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500",
+    },
+    pharmacist_dispenser: {
+      title: "Register New Dispenser",
+      subtitle: "Add a new pharmacy dispenser to the team",
+      icon: Users,
+      color: "text-green-500",
+      bgColor: "bg-green-500",
+    },
+    pharmacist_inventory: {
+      title: "Register New Inventory",
+      subtitle: "Add a new inventory pharmacist to the team",
+      icon: Users,
+      color: "text-orange-500",
+      bgColor: "bg-orange-500",
+    },
+    pharmacist_inventory_staff: { // Add this new configuration
+      title: "Register New Inventory Staff",
+      subtitle: "Add a new inventory support staff to the team",
+      icon: Users,
+      color: "text-teal-500",
+      bgColor: "bg-teal-500",
+    },
   };
+  return configs[role] || configs.doctor;
+};
 
   const config = getRoleConfig();
   const weekDays = [

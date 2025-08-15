@@ -235,8 +235,8 @@ const AddBatch = () => {
   const redirectPath =
     user?.role === "admin"
       ? "/admin/inventory-management"
-      : user?.role === "pharmacist_inventory"
-        ? "/pharmacist_inventory/inventory-management"
+      : user?.role === "pharmacist_inventory_staff"
+        ? "/pharmacist_inventory_staff/inventory-management"
         : "/inventory-management";
 
   const isMedicineFormValid = useMemo(() => {

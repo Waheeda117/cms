@@ -7,6 +7,7 @@ import {
     registerReceptionistFromAdmin, 
     registerPharmacistDispenserFromAdmin, 
     registerPharmacistInventoryFromAdmin,
+    registerPharmacistInventoryStaffFromAdmin,
     getUserDataByRoleAndId,
     updateUserDataByRoleAndId,
     deleteUserDataByRoleAndId
@@ -23,9 +24,10 @@ router.post("/register/doctor", registerDoctorFromAdmin);
 router.post("/register/receptionist", registerReceptionistFromAdmin);
 router.post("/register/pharmacist-dispenser", registerPharmacistDispenserFromAdmin);
 router.post("/register/pharmacist-inventory", registerPharmacistInventoryFromAdmin);
+router.post("/register/pharmacist-inventory-staff", registerPharmacistInventoryStaffFromAdmin);
 
 router.get("/:role/:id", getUserDataByRoleAndId);
 router.patch("/:role/:id", updateUserDataByRoleAndId);
 router.delete("/:role/:id", deleteUserDataByRoleAndId);
 
-export default router; 
+export default router;
