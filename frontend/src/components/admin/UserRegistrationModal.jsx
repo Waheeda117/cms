@@ -477,18 +477,6 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
                     </option>
                   ))}
                 </select>
-                {/* <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleInputChange}
-                className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                required
-              >
-                <option value="">Select Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select> */}
               </div>
             </div>
 
@@ -597,15 +585,6 @@ const UserRegistrationModal = ({ isOpen, onClose, role, onSuccess }) => {
                         <FileText
                           className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
                         />
-                        {/* <input
-                        type="text"
-                        name="speciality"
-                        value={formData.speciality}
-                        onChange={handleInputChange}
-                        className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                        placeholder="e.g., Cardiology, Neurology"
-                        required
-                      /> */}
                         <select
                           name="speciality"
                           value={formData.speciality}
