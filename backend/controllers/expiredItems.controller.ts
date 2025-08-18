@@ -15,18 +15,19 @@ export const getAllExpiredMedicines = async (req: AuthenticatedRequest, res: Res
             sortOrder = "asc"
         } = req.query;
 
+        // Start of today (exclude medicines expiring today)
         const today = new Date();
-        today.setHours(23, 59, 59, 999); // End of today
+        today.setHours(0, 0, 0, 0); // Start of today
 
         const pipeline: PipelineStage[] = [
             // Only include finalized batches
             { $match: { isDraft: false } },
             // Unwind medicines array
             { $unwind: "$medicines" },
-            // Match only expired medicines (before today)
+            // Match only expired medicines (before today, excluding today)
             {
                 $match: {
-                    "medicines.expiryDate": { $lt: today },
+                    "medicines.expiryDate": { $lt: today }, // Now excludes medicines expiring today
                     "medicines.quantity": { $gt: 0 } // Only include medicines with quantity > 0
                 }
             }
