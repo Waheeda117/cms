@@ -308,7 +308,7 @@ const AddBatch = () => {
   ]);
 
   const hasPriceMismatch = priceDifference > 0.001; // sirf warning ke liye
-  const canAddBatch = medicines.length > 0 && !isPriceExceeded;
+  const canAddBatch = medicines.length > 0 && !isPriceExceeded && !hasPriceMismatch;
 
   const handleMedicineInputChange = (e) => {
     const { name, value } = e.target;
