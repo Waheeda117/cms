@@ -140,7 +140,7 @@ export const addToStock = async (req: AuthenticatedRequest, res: Response): Prom
 
         await newBatch.save();
 
-        // Log the activity
+        // Log the activity for finalized batch
         await ActivityLogService.logBatchCreated(newBatch, new mongoose.Types.ObjectId(req.user!._id), false);
 
         res.status(201).json({
@@ -271,8 +271,8 @@ export const addDraftBatch = async (req: AuthenticatedRequest, res: Response): P
 
         await newDraftBatch.save();
 
-        // Log the activity
-        await ActivityLogService.logBatchCreated(newDraftBatch, new mongoose.Types.ObjectId(req.user!._id), true);
+        // Log the initial draft creation
+        await ActivityLogService.logDraftBatchCreated(newDraftBatch, new mongoose.Types.ObjectId(req.user!._id));
 
         res.status(201).json({
             success: true,
@@ -1254,13 +1254,13 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
             return;
         }
 
-        // Log the update activity
-            await ActivityLogService.logBatchUpdated(
-                updatedBatch, 
-                new mongoose.Types.ObjectId(req.user!._id), 
-                updateData, 
-                oldBatch
-            );
+        // Log the update activity (will handle draft vs finalized logic internally)
+        await ActivityLogService.logBatchUpdated(
+            updatedBatch, 
+            new mongoose.Types.ObjectId(req.user!._id), 
+            updateData, 
+            oldBatch
+        );
 
         // Prepare response with summary information
         const totalMedicines = updatedBatch.medicines.length;
