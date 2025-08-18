@@ -39,6 +39,7 @@ import Modal from "../../components/UI/Modal.jsx";
 import formatDate from "../../utils/date.js";
 import { useAuthStore } from "../../store/authStore";
 import { getBatchById } from "../../api/api";
+import BatchActivityLogsModal from "./BatchActivityLogsModal.jsx";
 
 // Helper function to calculate total medicine price
 const calculateTotalMedicinePrice = (medicines) => {
@@ -90,6 +91,9 @@ const BatchByID = () => {
   const [attachmentModalOpen, setAttachmentModalOpen] = useState(false);
   const [selectedAttachments, setSelectedAttachments] = useState([]);
   const [currentAttachmentIndex, setCurrentAttachmentIndex] = useState(0);
+
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
+
 
   // Fetch batch data
   useEffect(() => {
@@ -305,17 +309,27 @@ const BatchByID = () => {
             </div>
           </div>
 
-            <div className="flex flex-wrap gap-2">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate(`/update-batch/${batchId}`)}
-                className={`flex items-center space-x-2 px-4 py-2 ${theme.cardSecondary} hover:bg-opacity-70 transition-colors rounded-lg`}
-              >
-                <Edit className="w-4 h-4 text-blue-500" />
-                <span className={theme.textPrimary}>Edit Batch</span>
-              </motion.button>
-            </div>
+<div className="flex flex-wrap gap-2">
+  <motion.button
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    onClick={() => navigate(`/update-batch/${batchId}`)}
+    className={`flex items-center space-x-2 px-4 py-2 ${theme.cardSecondary} hover:bg-opacity-70 transition-colors rounded-lg`}
+  >
+    <Edit className="w-4 h-4 text-blue-500" />
+    <span className={theme.textPrimary}>Edit Batch</span>
+  </motion.button>
+  
+  <motion.button
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    onClick={() => setLogsModalOpen(true)}
+    className={`flex items-center space-x-2 px-4 py-2 ${theme.cardSecondary} hover:bg-opacity-70 transition-colors rounded-lg`}
+  >
+    <Activity className="w-4 h-4 text-emerald-500" />
+    <span className={theme.textPrimary}>View Logs</span>
+  </motion.button>
+</div>
         </div>
       </motion.div>
 
@@ -739,6 +753,17 @@ const BatchByID = () => {
           )}
         </div>
       </Modal>
+
+      {logsModalOpen && (
+        <BatchActivityLogsModal
+          isOpen={logsModalOpen}
+          onClose={() => setLogsModalOpen(false)}
+          batchNumber={batchData.batchNumber}
+          batchId={batchId}
+        />
+      )}
+
+
     </div>
   );
 };

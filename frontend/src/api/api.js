@@ -380,3 +380,13 @@ export const getExpireSoonItems = async (params = {}) => {
     throw error;
   }
 };
+
+export const getBatchActivityLogs = async (batchId) => {
+  try {
+    const response = await axiosInstance.get(`/logs/batch/${batchId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching batch activity logs:", error);
+    throw error;
+  }
+}

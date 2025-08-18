@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Inventory, IInventory, IBatchMedicine } from "../models/inventory.model.js";
 import { AuthenticatedRequest } from "../types/index.js";
+import { ActivityLogService } from "../services/activityLog.service.js";
 import mongoose from "mongoose";
 import { PipelineStage } from 'mongoose';
 
@@ -139,6 +140,9 @@ export const addToStock = async (req: AuthenticatedRequest, res: Response): Prom
 
         await newBatch.save();
 
+        // Log the activity
+        await ActivityLogService.logBatchCreated(newBatch, new mongoose.Types.ObjectId(req.user!._id), false);
+
         res.status(201).json({
             success: true,
             message: `New batch created successfully with ${medicines.length} medicines${miscellaneousAmount > 0 ? ' and miscellaneous amount' : ''}`,
@@ -267,6 +271,9 @@ export const addDraftBatch = async (req: AuthenticatedRequest, res: Response): P
 
         await newDraftBatch.save();
 
+        // Log the activity
+        await ActivityLogService.logBatchCreated(newDraftBatch, new mongoose.Types.ObjectId(req.user!._id), true);
+
         res.status(201).json({
             success: true,
             message: `Draft batch created successfully with ${medicines.length} medicines. This batch will not affect stock levels until finalized.`,
@@ -325,6 +332,9 @@ export const finalizeDraftBatch = async (req: AuthenticatedRequest, res: Respons
         batch.isDraft = false;
         batch.finalizedAt = new Date();
         await batch.save();
+
+        // Log the finalization
+        await ActivityLogService.logBatchFinalized(batch, new mongoose.Types.ObjectId(req.user!._id));
 
         res.status(200).json({
             success: true,
@@ -963,10 +973,8 @@ export const deleteStockById = async (req: AuthenticatedRequest, res: Response):
             return;
         }
 
-        // Find and delete the batch
-        const deletedBatch = await Inventory.findByIdAndDelete(id);
-
-        if (!deletedBatch) {
+        const batchToDelete = await Inventory.findById(id);
+        if (!batchToDelete) {
             res.status(404).json({
                 success: false,
                 message: "Batch not found"
@@ -974,16 +982,22 @@ export const deleteStockById = async (req: AuthenticatedRequest, res: Response):
             return;
         }
 
+        // Log the deletion before actually deleting
+        await ActivityLogService.logBatchDeleted(batchToDelete, new mongoose.Types.ObjectId(req.user!._id));
+
+        // Delete the batch
+        await Inventory.findByIdAndDelete(id);
+
         res.status(200).json({
             success: true,
             message: `Batch deleted successfully`,
             data: {
                 deletedBatch: {
-                    id: deletedBatch._id,
-                    batchNumber: deletedBatch.batchNumber,
-                    billID: deletedBatch.billID,
-                    medicineCount: deletedBatch.medicines.length,
-                    overallPrice: deletedBatch.overallPrice
+                    id: batchToDelete._id,
+                    batchNumber: batchToDelete.batchNumber,
+                    billID: batchToDelete.billID,
+                    medicineCount: batchToDelete.medicines.length,
+                    overallPrice: batchToDelete.overallPrice
                 }
             }
         });
@@ -1222,6 +1236,9 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
             }
         }
 
+        // Store the old batch data before update
+        const oldBatch = existingBatch.toObject();
+
         // Update the batch with partial data
         const updatedBatch = await Inventory.findByIdAndUpdate(
             id,
@@ -1236,6 +1253,14 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
             });
             return;
         }
+
+        // Log the update activity
+            await ActivityLogService.logBatchUpdated(
+                updatedBatch, 
+                new mongoose.Types.ObjectId(req.user!._id), 
+                updateData, 
+                oldBatch
+            );
 
         // Prepare response with summary information
         const totalMedicines = updatedBatch.medicines.length;
