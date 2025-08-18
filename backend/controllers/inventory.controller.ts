@@ -1389,8 +1389,8 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
 
 // Helper function for summary statistics
 const getSummaryStats = async () => {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     const pipeline = [
         { $match: { isDraft: false } },
@@ -1406,7 +1406,12 @@ const getSummaryStats = async () => {
                 isLowStock: { $lte: ["$medicines.quantity", "$medicines.reorderLevel"] },
                 isNearExpiry: {
                     $and: [
-                        { $gt: ["$medicines.expiryDate", todayStart] },
+                        { 
+                            $gte: [
+                                { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
+                                { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
+                            ]
+                        },
                         {
                             $lte: [
                                 "$medicines.expiryDate",
@@ -1416,7 +1421,10 @@ const getSummaryStats = async () => {
                     ]
                 },
                 isAlreadyExpired: {
-                    $lte: ["$medicines.expiryDate", todayStart]
+                    $lt: [
+                        { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
+                        { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
+                    ]
                 }
             }
         }
@@ -1574,21 +1582,26 @@ const getLowStockItems = async () => {
 };
 
 const getExpiringSoonItems = async () => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tenDaysFromNow = new Date();
     tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
-    
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
     
     const pipeline: PipelineStage[] = [
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
+            $addFields: {
+                expiryDateOnly: { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
+                todayDateOnly: { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
+            }
+        },
+        {
             $match: {
-                "medicines.expiryDate": {
-                    $gt: todayStart,
-                    $lte: tenDaysFromNow
-                }
+                $and: [
+                    { $expr: { $gte: ["$expiryDateOnly", "$todayDateOnly"] } },
+                    { "medicines.expiryDate": { $lte: tenDaysFromNow } }
+                ]
             }
         },
         { $sort: { "medicines.expiryDate": 1 } },
@@ -1598,12 +1611,7 @@ const getExpiringSoonItems = async () => {
                 name: "$medicines.medicineName",
                 batch: "$batchNumber",
                 quantity: "$medicines.quantity",
-                expiry: {
-                    $dateToString: {
-                        format: "%Y-%m-%d",
-                        date: "$medicines.expiryDate"
-                    }
-                },
+                expiry: "$expiryDateOnly",
                 daysLeft: {
                     $ceil: {
                         $divide: [
@@ -1626,18 +1634,21 @@ const getExpiringSoonItems = async () => {
 
 // NEW: Helper function for already expired items
 const getAlreadyExpiredItems = async () => {
-    const today = new Date();
-    // Set time to start of today to ensure we only get items that expired before today
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     const pipeline: PipelineStage[] = [
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
+            $addFields: {
+                expiryDateOnly: { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
+                todayDateOnly: { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
+            }
+        },
+        {
             $match: {
-                "medicines.expiryDate": {
-                    $lt: today // Only items that expired before today (not including today)
-                }
+                $expr: { $lt: ["$expiryDateOnly", "$todayDateOnly"] }
             }
         },
         { $sort: { "medicines.expiryDate": -1 } }, // Most recently expired first
@@ -1646,17 +1657,12 @@ const getAlreadyExpiredItems = async () => {
             $project: {
                 name: "$medicines.medicineName",
                 batch: "$batchNumber",
-                expiry: {
-                    $dateToString: {
-                        format: "%Y-%m-%d",
-                        date: "$medicines.expiryDate"
-                    }
-                },
+                expiry: "$expiryDateOnly",
                 quantity: "$medicines.quantity",
                 daysExpired: {
                     $ceil: {
                         $divide: [
-                            { $subtract: [today, "$medicines.expiryDate"] },
+                            { $subtract: [todayStart, "$medicines.expiryDate"] },
                             86400000 // milliseconds in a day
                         ]
                     }
@@ -1682,21 +1688,26 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
         const limitNum = parseInt(limit as string);
         const skip = (pageNum - 1) * limitNum;
         
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const tenDaysFromNow = new Date();
         tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
-        
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
         
         const pipeline: PipelineStage[] = [
             { $match: { isDraft: false } },
             { $unwind: "$medicines" },
             {
+                $addFields: {
+                    expiryDateOnly: { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
+                    todayDateOnly: { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
+                }
+            },
+            {
                 $match: {
-                    "medicines.expiryDate": {
-                        $gt: todayStart,
-                        $lte: tenDaysFromNow
-                    }
+                    $and: [
+                        { $expr: { $gte: ["$expiryDateOnly", "$todayDateOnly"] } },
+                        { "medicines.expiryDate": { $lte: tenDaysFromNow } }
+                    ]
                 }
             },
             {
@@ -1741,9 +1752,27 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
         ];
         
         // Get total count for pagination
-        const countPipeline = pipeline.slice(0, -3);
-        const totalCount = (await Inventory.aggregate([...countPipeline, { $count: "total" }]))[0]?.total || 0;
+        const countPipeline = [
+            { $match: { isDraft: false } },
+            { $unwind: "$medicines" },
+            {
+                $addFields: {
+                    expiryDateOnly: { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
+                    todayDateOnly: { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
+                }
+            },
+            {
+                $match: {
+                    $and: [
+                        { $expr: { $gte: ["$expiryDateOnly", "$todayDateOnly"] } },
+                        { "medicines.expiryDate": { $lte: tenDaysFromNow } }
+                    ]
+                }
+            },
+            { $count: "total" }
+        ];
         
+        const totalCount = (await Inventory.aggregate(countPipeline))[0]?.total || 0;
         const results = await Inventory.aggregate(pipeline);
         
         res.status(200).json({
