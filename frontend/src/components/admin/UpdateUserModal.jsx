@@ -129,13 +129,15 @@ const UpdateUserModal = ({ isOpen, onClose, userData, onSuccess }) => {
   phoneNumber: formData.phoneNumber,
   address: formData.address,
   gender: formData.gender,
+  email: (formData.email ?? "").trim(),
+  cnic: (formData.cnic ?? "").trim(),
 };
 
-const emailTrim = (formData.email ?? "").trim();
-filteredFormData.email = emailTrim;
+// const emailTrim = (formData.email ?? "").trim();
+// filteredFormData.email = emailTrim;
 
-const cnicTrim = (formData.cnic ?? "").trim();
-if (cnicTrim) filteredFormData.cnic = cnicTrim;
+// const cnicTrim = (formData.cnic ?? "").trim();
+// if (cnicTrim) filteredFormData.cnic = cnicTrim;
     // Doctor-specific fields
     if (userData?.role === "doctor") {
       const specialityTrim = (formData.speciality ?? "").trim();

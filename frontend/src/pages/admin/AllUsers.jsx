@@ -313,9 +313,9 @@ const getAddButtonText = (tabId) => {
               >
                 <Eye className="w-4 h-4 text-blue-500" />
               </button>
-              <button className={`p-1 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}>
+              {/* <button className={`p-1 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}>
                 <Edit className="w-4 h-4 text-green-500" />
-              </button>
+              </button> */}
               {/* UPDATE THIS DELETE BUTTON */}
               <button 
                 onClick={() => handleDeleteClick(user)}
@@ -372,9 +372,9 @@ const getAddButtonText = (tabId) => {
             >
               <Eye className="w-4 h-4 text-blue-500" />
             </button>
-            <button className={`p-1 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}>
+            {/* <button className={`p-1 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}>
               <Edit className="w-4 h-4 text-green-500" />
-            </button>
+            </button> */}
             {/* UPDATE THIS DELETE BUTTON */}
             <button 
               onClick={() => handleDeleteClick(user)}
