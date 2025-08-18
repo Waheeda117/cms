@@ -34,35 +34,57 @@ export class ActivityLogService {
     return await log.save();
   }
 
-  /**
-   * Log batch creation
-   */
-    static async logBatchCreated(
-    batch: IInventory, 
-    owner: mongoose.Types.ObjectId,
-    isDraft: boolean = false
-    ): Promise<IActivityLog> {
-    const details = isDraft 
-        ? `Draft batch created with ${batch.medicines.length} medicines` 
-        : `Batch created and finalized with ${batch.medicines.length} medicines`;
+/**
+ * Log batch creation - only for finalized batches
+ */
+static async logBatchCreated(
+  batch: IInventory, 
+  owner: mongoose.Types.ObjectId,
+  isDraft: boolean = false
+): Promise<IActivityLog | null> {
+  // Only log if batch is not draft (finalized immediately)
+  if (isDraft) {
+    return null; // Don't log draft batch creation
+  }
 
-    return this.logActivity({
-        batchId: batch._id as mongoose.Types.ObjectId,
-        batchNumber: batch.batchNumber,
-        action: 'CREATED',
-        details,
-        owner
-    });
-    }
+  const details = `Batch created and finalized with ${batch.medicines.length} medicines`;
 
-  /**
-   * Log batch finalization
-   */
+  return this.logActivity({
+    batchId: batch._id as mongoose.Types.ObjectId,
+    batchNumber: batch.batchNumber,
+    action: 'CREATED',
+    details,
+    owner
+  });
+}
+
+/**
+ * Log batch creation for draft - creates initial log
+ */
+static async logDraftBatchCreated(
+  batch: IInventory, 
+  owner: mongoose.Types.ObjectId
+): Promise<IActivityLog> {
+  const details = `Batch created with ${batch.medicines.length} medicines`;
+
+  return this.logActivity({
+    batchId: batch._id as mongoose.Types.ObjectId,
+    batchNumber: batch.batchNumber,
+    action: 'CREATED',
+    details,
+    owner
+  });
+}
+
+
+/**
+ * Log batch finalization - when draft becomes finalized
+ */
 static async logBatchFinalized(
   batch: IInventory, 
   owner: mongoose.Types.ObjectId
 ): Promise<IActivityLog> {
-  const details = `Draft batch finalized with ${batch.medicines.length} medicines`;
+  const details = `Batch finalized with ${batch.medicines.length} medicines`;
 
   return this.logActivity({
     batchId: batch._id as mongoose.Types.ObjectId,
@@ -73,15 +95,27 @@ static async logBatchFinalized(
   });
 }
 
-  /**
-   * Log batch update with detailed changes
-   */
+
+/**
+ * Log batch update - only for finalized batches or when finalizing
+ */
 static async logBatchUpdated(
   batch: IInventory,
   owner: mongoose.Types.ObjectId,
   changes: any,
   oldBatch: IInventory
-): Promise<IActivityLog> {
+): Promise<IActivityLog | null> {
+  // If old batch was draft and new batch is finalized, log as finalization
+  if (oldBatch.isDraft && !batch.isDraft) {
+    return this.logBatchFinalized(batch, owner);
+  }
+  
+  // If current batch is still draft, don't log the update
+  if (batch.isDraft) {
+    return null;
+  }
+
+  // Only log updates for finalized batches
   const changeDetails = this.generateUpdateDetails(changes, oldBatch, batch);
   
   return this.logActivity({
@@ -93,23 +127,25 @@ static async logBatchUpdated(
     changes: changeDetails.changes
   });
 }
-  /**
-   * Log batch deletion
-   */
-    static async logBatchDeleted(
-    batch: IInventory,
-    owner: mongoose.Types.ObjectId
-    ): Promise<IActivityLog> {
-    const details = `Batch deleted with ${batch.medicines.length} medicines (Total value: PKR ${batch.overallPrice})`;
 
-    return this.logActivity({
-        batchId: batch._id as mongoose.Types.ObjectId,
-        batchNumber: batch.batchNumber,
-        action: 'DELETED',
-        details,
-        owner
-    });
-    }
+
+/**
+ * Log batch deletion
+ */
+static async logBatchDeleted(
+  batch: IInventory,
+  owner: mongoose.Types.ObjectId
+): Promise<IActivityLog> {
+  const details = `Batch deleted with ${batch.medicines.length} medicines (Total value: $${batch.overallPrice})`;
+
+  return this.logActivity({
+    batchId: batch._id as mongoose.Types.ObjectId,
+    batchNumber: batch.batchNumber,
+    action: 'DELETED',
+    details,
+    owner
+  });
+}
 
   /**
    * Generate detailed update information
