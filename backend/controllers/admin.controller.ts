@@ -493,12 +493,19 @@ export const updateUserDataByRoleAndId = async (req: Request<{ role: string; id:
         if (updatedData.address) cleanUpdateData.address = updatedData.address;
         if (updatedData.gender) cleanUpdateData.gender = updatedData.gender;
 
-        // Optional fields - only add if they have valid values
-        if (updatedData.email && updatedData.email.trim()) {
-            cleanUpdateData.email = updatedData.email.trim();
+        // Handle isActive field specifically (boolean field that can be false)
+        if (updatedData.hasOwnProperty('isActive')) {
+            cleanUpdateData.isActive = updatedData.isActive;
         }
-        if (updatedData.cnic && updatedData.cnic.trim()) {
-            cleanUpdateData.cnic = updatedData.cnic.trim();
+
+        // For email: always include it in the update (empty string will clear the field)
+        if (updatedData.hasOwnProperty('email')) {
+            cleanUpdateData.email = updatedData.email ? updatedData.email.trim() : null;
+        }
+
+        // For CNIC: always include it in the update (empty string will clear the field)  
+        if (updatedData.hasOwnProperty('cnic')) {
+            cleanUpdateData.cnic = updatedData.cnic ? updatedData.cnic.trim() : null;
         }
 
         // Role-specific fields
