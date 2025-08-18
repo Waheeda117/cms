@@ -52,7 +52,7 @@ const ExpiredItems = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState(null);
   
-  const itemsPerPage = 10;
+  const itemsPerPage = 100;
 
   // Fetch expired medicines data
   const fetchExpiredMedicines = async (page = 1, search = "") => {
