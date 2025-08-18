@@ -1392,7 +1392,8 @@ const getSummaryStats = async () => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    const pipeline = [
+    // Pipeline for general stats (total items, near expiry, already expired)
+    const generalStatsPipeline = [
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
@@ -1403,7 +1404,6 @@ const getSummaryStats = async () => {
                 totalValue: "$medicines.totalAmount",
                 reorderLevel: "$medicines.reorderLevel",
                 expiryDate: "$medicines.expiryDate",
-                isLowStock: { $lte: ["$medicines.quantity", "$medicines.reorderLevel"] },
                 isNearExpiry: {
                     $and: [
                         { 
@@ -1430,13 +1430,40 @@ const getSummaryStats = async () => {
         }
     ];
 
-    const results = await Inventory.aggregate(pipeline);
+    // Pipeline for low stock count (grouped by medicine name)
+    const lowStockPipeline = [
+        { $match: { isDraft: false } },
+        { $unwind: "$medicines" },
+        {
+            $group: {
+                _id: "$medicines.medicineName",
+                totalQuantity: { $sum: "$medicines.quantity" },
+                minReorderLevel: { $min: "$medicines.reorderLevel" }
+            }
+        },
+        {
+            $match: {
+                $expr: { $lte: ["$totalQuantity", "$minReorderLevel"] }
+            }
+        },
+        {
+            $count: "lowStockCount"
+        }
+    ];
+
+    // Execute both pipelines
+    const [generalResults, lowStockResults] = await Promise.all([
+        Inventory.aggregate(generalStatsPipeline),
+        Inventory.aggregate(lowStockPipeline)
+    ]);
     
-    const totalItems = results.length;
-    const lowStockCount = results.filter(item => item.isLowStock).length;
-    const nearExpiryCount = results.filter(item => item.isNearExpiry).length;
-    const alreadyExpiredCount = results.filter(item => item.isAlreadyExpired).length;
-    const totalStockValue = results.reduce((sum, item) => sum + item.totalValue, 0);
+    const totalItems = generalResults.length;
+    const nearExpiryCount = generalResults.filter(item => item.isNearExpiry).length;
+    const alreadyExpiredCount = generalResults.filter(item => item.isAlreadyExpired).length;
+    const totalStockValue = generalResults.reduce((sum, item) => sum + item.totalValue, 0);
+    
+    // Get the correct low stock count
+    const lowStockCount = lowStockResults.length > 0 ? lowStockResults[0].lowStockCount : 0;
 
     // Format stock value in thousands (K)
     let formattedStockValue: string;
