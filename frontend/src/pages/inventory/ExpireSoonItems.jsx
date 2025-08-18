@@ -32,7 +32,7 @@ const ExpireSoonItems = () => {
     pagination: {},
   });
   
-  const itemsPerPage = 10;
+  const itemsPerPage = 100;
 
   // Fetch soon-to-expire items data
   const fetchExpireSoonItems = async (page = 1, search = "") => {

@@ -1389,6 +1389,9 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
 
 // Helper function for summary statistics
 const getSummaryStats = async () => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    
     const pipeline = [
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
@@ -1403,7 +1406,7 @@ const getSummaryStats = async () => {
                 isLowStock: { $lte: ["$medicines.quantity", "$medicines.reorderLevel"] },
                 isNearExpiry: {
                     $and: [
-                        { $gte: ["$medicines.expiryDate", new Date()] },
+                        { $gt: ["$medicines.expiryDate", todayStart] },
                         {
                             $lte: [
                                 "$medicines.expiryDate",
@@ -1413,7 +1416,7 @@ const getSummaryStats = async () => {
                     ]
                 },
                 isAlreadyExpired: {
-                    $lt: ["$medicines.expiryDate", new Date()]
+                    $lte: ["$medicines.expiryDate", todayStart]
                 }
             }
         }
@@ -1574,13 +1577,16 @@ const getExpiringSoonItems = async () => {
     const tenDaysFromNow = new Date();
     tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
     
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    
     const pipeline: PipelineStage[] = [
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
             $match: {
                 "medicines.expiryDate": {
-                    $gte: new Date(),
+                    $gt: todayStart,
                     $lte: tenDaysFromNow
                 }
             }
@@ -1591,7 +1597,7 @@ const getExpiringSoonItems = async () => {
             $project: {
                 name: "$medicines.medicineName",
                 batch: "$batchNumber",
-                quantity: "$medicines.quantity", // Added quantity for better context
+                quantity: "$medicines.quantity",
                 expiry: {
                     $dateToString: {
                         format: "%Y-%m-%d",
@@ -1601,8 +1607,8 @@ const getExpiringSoonItems = async () => {
                 daysLeft: {
                     $ceil: {
                         $divide: [
-                            { $subtract: ["$medicines.expiryDate", new Date()] },
-                            86400000 // milliseconds in a day
+                            { $subtract: ["$medicines.expiryDate", todayStart] },
+                            86400000
                         ]
                     }
                 }
@@ -1635,7 +1641,7 @@ const getAlreadyExpiredItems = async () => {
             }
         },
         { $sort: { "medicines.expiryDate": -1 } }, // Most recently expired first
-        { $limit: 10 },
+        { $limit: 5 },
         {
             $project: {
                 name: "$medicines.medicineName",
@@ -1679,13 +1685,16 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
         const tenDaysFromNow = new Date();
         tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
         
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        
         const pipeline: PipelineStage[] = [
             { $match: { isDraft: false } },
             { $unwind: "$medicines" },
             {
                 $match: {
                     "medicines.expiryDate": {
-                        $gte: new Date(),
+                        $gt: todayStart,
                         $lte: tenDaysFromNow
                     }
                 }
@@ -1722,7 +1731,7 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
                     daysLeft: {
                         $ceil: {
                             $divide: [
-                                { $subtract: ["$earliestExpiry", new Date()] },
+                                { $subtract: ["$earliestExpiry", todayStart] },
                                 86400000
                             ]
                         }
@@ -1732,7 +1741,7 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
         ];
         
         // Get total count for pagination
-        const countPipeline = pipeline.slice(0, -3); // Remove skip, limit, and project
+        const countPipeline = pipeline.slice(0, -3);
         const totalCount = (await Inventory.aggregate([...countPipeline, { $count: "total" }]))[0]?.total || 0;
         
         const results = await Inventory.aggregate(pipeline);
@@ -1759,6 +1768,7 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
         });
     }
 };
+
 
 export const getLowStockItemsEndpoint = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {

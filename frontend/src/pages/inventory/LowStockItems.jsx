@@ -33,7 +33,7 @@ const LowStockItems = () => {
     pagination: {},
   });
   
-  const itemsPerPage = 10;
+  const itemsPerPage = 100;
 
   // Fetch low stock items data
   const fetchLowStockItems = async (page = 1, search = "") => {
