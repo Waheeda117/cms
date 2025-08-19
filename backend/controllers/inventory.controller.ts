@@ -1703,7 +1703,7 @@ const getAlreadyExpiredItems = async () => {
 
 export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 1000 } = req.query;
         const pageNum = parseInt(page as string);
         const limitNum = parseInt(limit as string);
         const skip = (pageNum - 1) * limitNum;
@@ -1814,7 +1814,7 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
 
 export const getLowStockItemsEndpoint = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 1000 } = req.query;
         const pageNum = parseInt(page as string);
         const limitNum = parseInt(limit as string);
         const skip = (pageNum - 1) * limitNum;
