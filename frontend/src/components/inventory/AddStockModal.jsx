@@ -35,42 +35,44 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
     batchDetails.overallPrice &&
     parseFloat(batchDetails.overallPrice) > 0;
 
-const handleBatchInputChange = (e) => {
-  const { name, value } = e.target;
 
-  // Special handling for billID (cheque number) - only allow numeric input with max 7 digits
-  if (name === 'billID') {
-    // Remove any non-numeric characters and limit to 7 digits
-    const numericValue = value.replace(/[^0-9]/g, '').slice(0, 7);
-    setBatchDetails((prev) => ({ ...prev, [name]: numericValue }));
-  } 
-  // Special handling for batchNumber - limit to 8 characters
-  else if (name === 'batchNumber') {
-    // Limit to 8 characters
-    const limitedValue = value.slice(0, 8);
-    setBatchDetails((prev) => ({ ...prev, [name]: limitedValue }));
-  }
-  // Special handling for overallPrice - limit to 8 digits (including decimal part)
-  else if (name === 'overallPrice') {
-    // Allow digits and one decimal point, limit total digits to 8
-    const cleanValue = value.replace(/[^\d.]/g, '');
-    const parts = cleanValue.split('.');
-    
-    if (parts.length > 2) {
-      // More than one decimal point, ignore this input
-      return;
+  const handleBatchInputChange = (e) => {
+    const { name, value } = e.target;
+
+    // Special handling for billID (cheque number) - only allow numeric input with max 9 digits
+    if (name === 'billID') {
+      // Remove any non-numeric characters and limit to 9 digits
+      const numericValue = value.replace(/[^0-9]/g, '').slice(0, 9);
+      setBatchDetails((prev) => ({ ...prev, [name]: numericValue }));
+    } 
+    // Special handling for batchNumber - limit to 9 characters
+    else if (name === 'batchNumber') {
+      // Limit to 9 characters
+      const limitedValue = value.slice(0, 9);
+      setBatchDetails((prev) => ({ ...prev, [name]: limitedValue }));
     }
-    
-    // Combine integer and decimal parts, limit total to 8 digits
-    const totalDigits = (parts[0] || '').length + (parts[1] || '').length;
-    if (totalDigits <= 8) {
-      setBatchDetails((prev) => ({ ...prev, [name]: cleanValue }));
+    // Special handling for overallPrice - limit to 9 digits with 2 decimal places
+    else if (name === 'overallPrice') {
+      // Allow digits and one decimal point
+      const cleanValue = value.replace(/[^\d.]/g, '');
+      const parts = cleanValue.split('.');
+      
+      if (parts.length > 2) {
+        // More than one decimal point, ignore this input
+        return;
+      }
+      
+      // Limit integer part to 9 digits and decimal part to 2 digits
+      let integerPart = (parts[0] || '').slice(0, 9);
+      let decimalPart = parts.length > 1 ? (parts[1] || '').slice(0, 2) : '';
+      
+      const finalValue = decimalPart ? `${integerPart}.${decimalPart}` : integerPart;
+      setBatchDetails((prev) => ({ ...prev, [name]: finalValue }));
+    } 
+    else {
+      setBatchDetails((prev) => ({ ...prev, [name]: value }));
     }
-  } 
-  else {
-    setBatchDetails((prev) => ({ ...prev, [name]: value }));
-  }
-};
+  };
 
   // Handle key press for cheque number input - prevent non-numeric characters
   const handleChequeNumberKeyPress = (e) => {
@@ -190,9 +192,9 @@ const handleBatchInputChange = (e) => {
                 name="batchNumber"
                 value={batchDetails.batchNumber}
                 onChange={handleBatchInputChange}
-                maxLength={8}
+                maxLength={9}
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                placeholder="Enter batch number (max 8 digits)"
+                placeholder="Enter batch number (max 9 digits)"
                 required
               />
             </div>
@@ -215,9 +217,9 @@ const handleBatchInputChange = (e) => {
                 onChange={handleBatchInputChange}
                 step="0.01"
                 min="0.01"
-                max="99999999"
+                max="999999999.99"
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                placeholder="Enter overall price (max 8 digits)"
+                placeholder="Enter overall price (max 9 digits, 2 decimals)"
                 required
               />
             </div>
@@ -242,9 +244,9 @@ const handleBatchInputChange = (e) => {
                 value={batchDetails.billID}
                 onChange={handleBatchInputChange}
                 onKeyDown={handleChequeNumberKeyPress}
-                maxLength={7}
+                maxLength={9}
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                placeholder="Enter Cheque Number (max 7 digits)"
+                placeholder="Enter Cheque Number (max 9 digits)"
                 pattern="[0-9]*"
                 inputMode="numeric"
                 required
