@@ -1,5 +1,5 @@
 // src/pages/LowStockItems.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -9,12 +9,14 @@ import {
   RefreshCw,
   Search,
   Box,
+  ChevronLeft,
   ShoppingCart,
   ArrowDownCircle,
   ArrowUpCircle
 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import Pagination from "../../components/UI/Pagination";
+import { useNavigate } from "react-router-dom";
 import { getLowStockItems } from "../../api/api";
 
 const LowStockItems = () => {
@@ -25,37 +27,28 @@ const LowStockItems = () => {
     direction: "ascending",
   });
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [expandedRows, setExpandedRows] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [data, setData] = useState({
-    items: [],
-    pagination: {},
-  });
+  const [allItems, setAllItems] = useState([]); // Store all items for client-side operations
   
-  const itemsPerPage = 100;
+  const navigate = useNavigate();
 
-  // Fetch low stock items data
-  const fetchLowStockItems = async (page = 1, search = "") => {
+  // Fetch all low stock items (no pagination on server)
+  const fetchLowStockItems = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const params = {
-        page: page,
-        limit: itemsPerPage,
-        search: search,
-        sortBy: sortConfig.key || 'name',
-        sortOrder: sortConfig.direction === 'ascending' ? 'asc' : 'desc'
-      };
-
-      const response = await getLowStockItems(params);
+      // Fetch all items without pagination parameters
+      const response = await getLowStockItems({
+        sortBy: 'name',
+        sortOrder: 'asc'
+      });
       
       if (response.success) {
-        setData({
-          items: response.data.items,
-          pagination: response.data.pagination
-        });
+        setAllItems(response.data.items);
       } else {
         setError('Failed to fetch low stock items');
       }
@@ -69,28 +62,67 @@ const LowStockItems = () => {
 
   // Initial data fetch
   useEffect(() => {
-    fetchLowStockItems(currentPage, searchTerm);
-  }, [currentPage]);
+    fetchLowStockItems();
+  }, []);
 
-  // Handle search with debounce
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (currentPage === 1) {
-        fetchLowStockItems(1, searchTerm);
-      } else {
-        setCurrentPage(1);
-      }
-    }, 500);
+  // Client-side filtering and sorting
+  const filteredAndSortedItems = useMemo(() => {
+    let filtered = [...allItems];
 
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
-
-  // Handle sort changes
-  useEffect(() => {
-    if (sortConfig.key) {
-      fetchLowStockItems(currentPage, searchTerm);
+    // Filter by search term
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(item =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-  }, [sortConfig]);
+
+    // Sort items
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        // Handle special cases
+        if (sortConfig.key === 'earliestExpiry') {
+          const aEarliest = a.batches.length > 0 
+            ? Math.min(...a.batches.map(batch => new Date(batch.expiryDate).getTime()))
+            : Infinity;
+          const bEarliest = b.batches.length > 0 
+            ? Math.min(...b.batches.map(batch => new Date(batch.expiryDate).getTime()))
+            : Infinity;
+          aValue = aEarliest;
+          bValue = bEarliest;
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [allItems, searchTerm, sortConfig]);
+
+  // Client-side pagination
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedItems.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedItems, currentPage, itemsPerPage]);
+
+  // Pagination info
+  const totalItems = filteredAndSortedItems.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const hasNextPage = currentPage < totalPages;
+  const hasPrevPage = currentPage > 1;
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   // Toggle row expansion
   const toggleRowExpansion = (medicineId) => {
@@ -102,7 +134,18 @@ const LowStockItems = () => {
 
   // Handle refresh
   const handleRefresh = () => {
-    fetchLowStockItems(currentPage, searchTerm);
+    fetchLowStockItems();
+  };
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Handle items per page change
+  const handleLimitChange = (newLimit) => {
+    setItemsPerPage(newLimit);
+    setCurrentPage(1); // Reset to first page
   };
 
   // Format date for display
@@ -123,16 +166,16 @@ const LowStockItems = () => {
   // Calculate summary values
   const calculateSummary = () => {
     const summary = {
-      totalLowStockItems: data.pagination.totalItems || 0,
+      totalLowStockItems: filteredAndSortedItems.length,
       totalShortage: 0,
       totalBatches: 0,
       criticalItems: 0
     };
     
-    data.items.forEach(item => {
-      summary.totalShortage += item.shortage;
+    filteredAndSortedItems.forEach(item => {
+      if (item.shortage) summary.totalShortage += item.shortage;
       summary.totalBatches += item.batches.length;
-      if (item.shortage > 10 || item.currentStock < 5) {
+      if ((item.shortage && item.shortage > 10) || item.currentStock < 5) {
         summary.criticalItems++;
       }
     });
@@ -141,7 +184,6 @@ const LowStockItems = () => {
   };
 
   const summary = calculateSummary();
-  const { items, pagination } = data;
 
   // Summary cards
   const summaryCards = [
@@ -152,13 +194,6 @@ const LowStockItems = () => {
       color: "text-amber-500",
       bgColor: "bg-amber-500 bg-opacity-20 border-amber-500",
     },
-    // {
-    //   title: "Total Shortage",
-    //   value: summary.totalShortage,
-    //   icon: ArrowDownCircle,
-    //   color: "text-red-500",
-    //   bgColor: "bg-red-500 bg-opacity-20 border-red-500",
-    // },
     {
       title: "Total Batches",
       value: summary.totalBatches,
@@ -185,7 +220,7 @@ const LowStockItems = () => {
   };
 
   // Loading state
-  if (loading && items.length === 0) {
+  if (loading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center min-h-96">
@@ -197,7 +232,7 @@ const LowStockItems = () => {
   }
 
   // Error state
-  if (error && items.length === 0) {
+  if (error && allItems.length === 0) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
@@ -219,6 +254,22 @@ const LowStockItems = () => {
 
   return (
     <div className="p-6">
+      {/* Back Navigation */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mb-6"
+      >
+        <button
+          onClick={() => navigate(-1)}
+          className={`flex items-center space-x-2 py-2 px-2 ${theme.cardSecondary} hover:bg-opacity-70 transition-colors rounded-lg`}
+        >
+          <ChevronLeft className={`w-5 h-5 ${theme.textPrimary}`} />
+          <span className={theme.textPrimary}>Back to Dashboard</span>
+        </button>
+      </motion.div>
+
       {/* Page Title */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -235,13 +286,6 @@ const LowStockItems = () => {
               Monitor and manage items below reorder levels
             </p>
           </div>
-          {/* <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className={`p-3 ${theme.cardSecondary} rounded-lg hover:bg-opacity-70 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <RefreshCw className={`w-5 h-5 ${theme.textMuted} ${loading ? 'animate-spin' : ''}`} />
-          </button> */}
         </div>
       </motion.div>
 
@@ -303,7 +347,7 @@ const LowStockItems = () => {
       >
         <div className="p-6">
           {/* Search */}
-          {/* <div className="mb-6">
+          <div className="mb-6">
             <div className="relative">
               <Search
                 className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
@@ -316,7 +360,7 @@ const LowStockItems = () => {
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
               />
             </div>
-          </div> */}
+          </div>
 
           {/* Table */}
           <div className="overflow-x-auto">
@@ -350,22 +394,6 @@ const LowStockItems = () => {
                       Reorder Level
                     </span>
                   </th>
-                  {/* <th 
-                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer hover:bg-opacity-50"
-                    onClick={() => requestSort('shortage')}
-                  >
-                    <span className={`${theme.textMuted} tracking-wider`}>
-                      Shortage
-                    </span>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-center text-xs font-medium cursor-pointer hover:bg-opacity-50"
-                    onClick={() => requestSort('totalBatches')}
-                  >
-                    <span className={`${theme.textMuted} tracking-wider`}>
-                      Batches
-                    </span>
-                  </th> */}
                   <th 
                     className="px-6 py-3 text-center text-xs font-medium cursor-pointer hover:bg-opacity-50"
                     onClick={() => requestSort('earliestExpiry')}
@@ -377,7 +405,7 @@ const LowStockItems = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {items.map((item) => {
+                {paginatedItems.map((item) => {
                   const isExpanded = expandedRows[item._id];
                   // Find earliest expiry date
                   const earliestBatch = [...item.batches].sort((a, b) => 
@@ -409,7 +437,7 @@ const LowStockItems = () => {
                               className={`w-10 h-10 rounded-full ${theme.cardSecondary} flex items-center justify-center mr-3`}
                             >
                               <Package className={`w-5 h-5 ${
-                                item.shortage > 10 || item.currentStock < 5 
+                                (item.shortage && item.shortage > 10) || item.currentStock < 5 
                                   ? "text-red-500" 
                                   : "text-amber-500"
                               }`} />
@@ -430,20 +458,6 @@ const LowStockItems = () => {
                         >
                           {item.currentStock} units
                         </td>
-                        {/* <td
-                          className={`px-6 py-4 text-center text-sm ${theme.textSecondary}`}
-                        >
-                          {item.reorderLevel} units
-                        </td>
-                        <td
-                          className={`px-6 py-4 text-center text-sm font-semibold ${
-                            item.shortage > 10 
-                              ? "text-red-500" 
-                              : "text-amber-500"
-                          }`}
-                        >
-                          {item.shortage} units
-                        </td> */}
                         <td
                           className={`px-6 py-4 text-center text-sm ${theme.textSecondary}`}
                         >
@@ -480,11 +494,6 @@ const LowStockItems = () => {
                         <tr className={`${theme.borderSecondary} border-b`}>
                           <td colSpan="7" className="px-4 py-4 bg-gray-50 dark:bg-gray-800 bg-opacity-50">
                             <div className="pl-16 pr-4">
-                              <h3 className={`font-semibold ${theme.textPrimary} mb-3 flex items-center`}>
-                                <Package className="w-4 h-4 mr-2" />
-                                Batch Details
-                              </h3>
-                              
                               <div className="overflow-x-auto">
                                 <table className="w-full min-w-full">
                                   <thead>
@@ -492,9 +501,6 @@ const LowStockItems = () => {
                                       <th className="px-4 py-2 text-left text-xs font-medium">
                                         Batch Number
                                       </th>
-                                      {/* <th className="px-4 py-2 text-left text-xs font-medium">
-                                        Bill ID
-                                      </th> */}
                                       <th className="px-4 py-2 text-center text-xs font-medium">
                                         Quantity
                                       </th>
@@ -520,9 +526,6 @@ const LowStockItems = () => {
                                           <td className="px-4 py-3 text-sm">
                                             {batch.batchNumber}
                                           </td>
-                                          {/* <td className="px-4 py-3 text-sm">
-                                            {batch.billID}
-                                          </td> */}
                                           <td className="px-4 py-3 text-center text-sm font-medium">
                                             {batch.quantity}
                                           </td>
@@ -555,7 +558,7 @@ const LowStockItems = () => {
           </div>
 
           {/* Empty State */}
-          {items.length === 0 && !loading && (
+          {paginatedItems.length === 0 && !loading && (
             <div className="text-center py-12">
               <ShoppingCart
                 className={`w-16 h-16 ${theme.textMuted} mx-auto mb-4`}
@@ -575,12 +578,16 @@ const LowStockItems = () => {
         </div>
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
+        {totalPages > 1 && (
           <Pagination
-            currentPage={pagination.currentPage || 1}
-            totalPages={pagination.totalPages || 1}
-            onPageChange={setCurrentPage}
-            className="mt-4"
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            hasNextPage={hasNextPage}
+            hasPrevPage={hasPrevPage}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
           />
         )}
       </motion.div>

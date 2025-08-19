@@ -8,6 +8,7 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   RefreshCw,
   User,
   DollarSign,
@@ -16,6 +17,8 @@ import {
 import { useTheme } from "../../hooks/useTheme";
 import Modal from "../../components/UI/Modal";
 import Pagination from "../../components/UI/Pagination";
+import { useNavigate } from "react-router-dom";
+
 import { 
   getAllExpiredMedicines, 
   discardExpiredMedicineFromAllBatches,
@@ -52,7 +55,9 @@ const ExpiredItems = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState(null);
   
-  const itemsPerPage = 100;
+  const itemsPerPage = 100000;
+  const navigate = useNavigate();
+  
 
   // Fetch expired medicines data
   const fetchExpiredMedicines = async (page = 1, search = "") => {
@@ -324,6 +329,24 @@ const ExpiredItems = () => {
 
   return (
     <div className="p-6">
+
+          {/* Back Navigation */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mb-6"
+          >
+            <button
+              onClick={() => navigate(-1)}
+              className={`flex items-center space-x-2 py-2 px-2 ${theme.cardSecondary} hover:bg-opacity-70 transition-colors rounded-lg`}
+            >
+              <ChevronLeft className={`w-5 h-5 ${theme.textPrimary}`} />
+              <span className={theme.textPrimary}>Back to Dashboard</span>
+            </button>
+          </motion.div>
+
+
       {/* Page Title */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -597,10 +620,10 @@ const ExpiredItems = () => {
                             <tr className={`${theme.borderSecondary} border-b`}>
                               <td colSpan="8" className="px-4 py-4 bg-gray-50 dark:bg-gray-800 bg-opacity-50">
                                 <div className="pl-16 pr-4">
-                                  <h3 className={`font-semibold ${theme.textPrimary} mb-3 flex items-center`}>
+                                  {/* <h3 className={`font-semibold ${theme.textPrimary} mb-3 flex items-center`}>
                                     <Package className="w-4 h-4 mr-2" />
                                     Batch Details
-                                  </h3>
+                                  </h3> */}
                                   
                                   <div className="overflow-x-auto">
                                     <table className="w-full min-w-full">

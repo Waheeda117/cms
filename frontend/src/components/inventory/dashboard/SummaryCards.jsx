@@ -17,14 +17,14 @@ const SummaryCards = ({ theme, data }) => {
       bgColor: "bg-blue-500 bg-opacity-20 border-blue-500",
     },
     {
-      title: "Low Stock",
+      title: "Low Stock Medicines",
       value: data?.lowStock || 0,
       icon: Gauge,
       color: "text-orange-500",
       bgColor: "bg-orange-500 bg-opacity-20 border-orange-500",
     },
     {
-      title: "Near Expiry",
+      title: "Expiring Soon",
       value: data?.nearExpiry || 0,
       icon: CalendarX,
       color: "text-red-500",
