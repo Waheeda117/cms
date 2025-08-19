@@ -15,7 +15,30 @@ export interface LogActivityParams {
   }[];
 }
 
+
+
 export class ActivityLogService {
+
+
+  /**
+ * Helper function to format currency
+ */
+private static formatCurrency = (amount: number): string => {
+  return `PKR ${amount?.toFixed(2) || '0.00'}`;
+};
+
+/**
+ * Helper function to format date
+ */
+private static formatDate = (date: any): string => {
+  if (!date) return 'Not set';
+  return new Date(date).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit', 
+    year: 'numeric'
+  });
+};
+
   
   /**
    * Log a batch activity
@@ -35,7 +58,7 @@ export class ActivityLogService {
   }
 
 /**
- * Log batch creation - only for finalized batches
+ * Log batch creation - only for finalized batches with batch details
  */
 static async logBatchCreated(
   batch: IInventory, 
@@ -47,7 +70,13 @@ static async logBatchCreated(
     return null; // Don't log draft batch creation
   }
 
-  const details = `Batch created and finalized with ${batch.medicines.length} medicines`;
+  const totalValue = ActivityLogService.formatCurrency(batch.overallPrice || 0);
+  const medicinesSummary = batch.medicines.map(med => 
+    `${med.medicineName} (${med.quantity} units @ ${this.formatCurrency(med.price)}/unit)`
+  ).join(', ');
+  const miscAmount = batch.miscellaneousAmount ? `, Miscellaneous: ${this.formatCurrency(batch.miscellaneousAmount)}` : '';
+  
+  const details = `Batch created and finalized: Batch #${batch.batchNumber}, Bill ID: ${batch.billID || 'N/A'}, Total Value: ${totalValue}${miscAmount}, Medicines: ${medicinesSummary}`;
 
   return this.logActivity({
     batchId: batch._id as mongoose.Types.ObjectId,
@@ -58,14 +87,21 @@ static async logBatchCreated(
   });
 }
 
+
 /**
- * Log batch creation for draft - creates initial log
+ * Log batch creation for draft - creates initial log with batch details
  */
 static async logDraftBatchCreated(
   batch: IInventory, 
   owner: mongoose.Types.ObjectId
 ): Promise<IActivityLog> {
-  const details = `Batch created with ${batch.medicines.length} medicines`;
+  const totalValue = ActivityLogService.formatCurrency(batch.overallPrice || 0);
+  const medicinesSummary = batch.medicines.map(med => 
+    `${med.medicineName} (${med.quantity} units @ ${this.formatCurrency(med.price)}/unit)`
+  ).join(', ');
+  const miscAmount = batch.miscellaneousAmount ? `, Miscellaneous: ${this.formatCurrency(batch.miscellaneousAmount)}` : '';
+  
+  const details = `Batch created: Batch #${batch.batchNumber}, Bill ID: ${batch.billID || 'N/A'}, Total Value: ${totalValue}${miscAmount}, Medicines: ${medicinesSummary}`;
 
   return this.logActivity({
     batchId: batch._id as mongoose.Types.ObjectId,
@@ -77,13 +113,19 @@ static async logDraftBatchCreated(
 }
 
 /**
- * Log batch finalization - when draft becomes finalized
+ * Log batch finalization - when draft becomes finalized with batch details
  */
 static async logBatchFinalized(
   batch: IInventory, 
   owner: mongoose.Types.ObjectId
 ): Promise<IActivityLog> {
-  const details = `Batch finalized with ${batch.medicines.length} medicines`;
+  const totalValue = ActivityLogService.formatCurrency(batch.overallPrice || 0);
+  const medicinesSummary = batch.medicines.map(med => 
+    `${med.medicineName} (${med.quantity} units @ ${this.formatCurrency(med.price)}/unit)`
+  ).join(', ');
+  const miscAmount = batch.miscellaneousAmount ? `, Miscellaneous: ${this.formatCurrency(batch.miscellaneousAmount)}` : '';
+  
+  const details = `Batch finalized: Batch #${batch.batchNumber}, Bill ID: ${batch.billID || 'N/A'}, Total Value: ${totalValue}${miscAmount}, Medicines: ${medicinesSummary}`;
 
   return this.logActivity({
     batchId: batch._id as mongoose.Types.ObjectId,
@@ -93,6 +135,8 @@ static async logBatchFinalized(
     owner
   });
 }
+
+
 
 /**
  * Log batch update - only for finalized batches or when finalizing
@@ -242,7 +286,7 @@ static async logBatchDeleted(
   }
 
 /**
- * Super detailed medicine change detection with relevant information only
+ * Super detailed medicine change detection with simplified output
  */
 private static detectSuperDetailedMedicineChanges(oldMedicines: any[], newMedicines: any[]): {
   hasChanges: boolean;
@@ -250,23 +294,8 @@ private static detectSuperDetailedMedicineChanges(oldMedicines: any[], newMedici
   summaryParts: string[];
 } {
   const detailedChanges = [];
-  const summaryParts = [];
+  const summaryParts: string[] = [];
   let hasChanges = false;
-
-  // Helper function to format date
-  const formatDate = (date: any): string => {
-    if (!date) return 'Not set';
-    return new Date(date).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit', 
-      year: 'numeric'
-    });
-  };
-
-  // Helper function to format currency
-  const formatCurrency = (amount: number): string => {
-    return `PKR ${amount?.toFixed(2) || '0.00'}`;
-  };
 
   // Check if medicines count changed
   if (oldMedicines.length !== newMedicines.length) {
@@ -276,7 +305,6 @@ private static detectSuperDetailedMedicineChanges(oldMedicines: any[], newMedici
       oldValue: oldMedicines.length,
       newValue: newMedicines.length
     });
-    summaryParts.push(`Total medicines count changed from ${oldMedicines.length} to ${newMedicines.length}`);
   }
 
   // Create maps for easier lookup
@@ -293,73 +321,49 @@ private static detectSuperDetailedMedicineChanges(oldMedicines: any[], newMedici
     newMedicinesMap.set(key, { ...med, originalIndex: index });
   });
 
-  // Track medicine additions with complete details
-  const addedMedicines = [];
+  // Track medicine additions - simplified
   newMedicinesMap.forEach((newMed, key) => {
     if (!oldMedicinesMap.has(key)) {
-      addedMedicines.push(newMed);
       hasChanges = true;
       
-      const medicineDetails = {
-        medicineId: newMed.medicineId,
-        medicineName: newMed.medicineName,
-        quantity: newMed.quantity,
-        price: newMed.price,
-        expiryDate: newMed.expiryDate,
-        totalValue: (newMed.quantity * newMed.price)
-      };
-
       detailedChanges.push({
         field: 'medicineAdded',
         oldValue: null,
-        newValue: medicineDetails
+        newValue: {
+          medicineId: newMed.medicineId,
+          medicineName: newMed.medicineName,
+          quantity: newMed.quantity,
+          price: newMed.price,
+          expiryDate: newMed.expiryDate
+        }
       });
 
-      // Create detailed summary for added medicine
-      const addedSummary = `Medicine "${newMed.medicineName}" added with complete details: ` +
-        `Quantity: ${newMed.quantity} units, ` +
-        `Unit Price: ${formatCurrency(newMed.price)}, ` +
-        `Total Value: ${formatCurrency(newMed.quantity * newMed.price)}, ` +
-        `Expiry Date: ${formatDate(newMed.expiryDate)}`;
-      
-      summaryParts.push(addedSummary);
+      summaryParts.push(`Medicine "${newMed.medicineName}" added: Quantity: ${newMed.quantity} units, Price: ${this.formatCurrency(newMed.price)}, Expiry: ${this.formatDate(newMed.expiryDate)}`);
     }
   });
 
-  // Track medicine removals with complete details
-  const removedMedicines = [];
+  // Track medicine removals - simplified
   oldMedicinesMap.forEach((oldMed, key) => {
     if (!newMedicinesMap.has(key)) {
-      removedMedicines.push(oldMed);
       hasChanges = true;
       
-      const medicineDetails = {
-        medicineId: oldMed.medicineId,
-        medicineName: oldMed.medicineName,
-        quantity: oldMed.quantity,
-        price: oldMed.price,
-        expiryDate: oldMed.expiryDate,
-        totalValue: (oldMed.quantity * oldMed.price)
-      };
-
       detailedChanges.push({
         field: 'medicineRemoved',
-        oldValue: medicineDetails,
+        oldValue: {
+          medicineId: oldMed.medicineId,
+          medicineName: oldMed.medicineName,
+          quantity: oldMed.quantity,
+          price: oldMed.price,
+          expiryDate: oldMed.expiryDate
+        },
         newValue: null
       });
 
-      // Create detailed summary for removed medicine
-      const removedSummary = `Medicine "${oldMed.medicineName}" removed with complete details: ` +
-        `Lost Quantity: ${oldMed.quantity} units, ` +
-        `Unit Price: ${formatCurrency(oldMed.price)}, ` +
-        `Lost Value: ${formatCurrency(oldMed.quantity * oldMed.price)}, ` +
-        `Expiry Date: ${formatDate(oldMed.expiryDate)}`;
-      
-      summaryParts.push(removedSummary);
+      summaryParts.push(`Medicine "${oldMed.medicineName}" removed`);
     }
   });
 
-  // Track changes in existing medicines with specific field-only details
+  // Track changes in existing medicines - simplified with specific labels
   newMedicinesMap.forEach((newMed, key) => {
     const oldMed = oldMedicinesMap.get(key);
     
@@ -367,133 +371,47 @@ private static detectSuperDetailedMedicineChanges(oldMedicines: any[], newMedici
       const medicineChanges = [];
       const changeDetails = [];
       
-      // Track what fields actually changed
-      const changedFields = {
-        quantity: oldMed.quantity !== newMed.quantity,
-        price: oldMed.price !== newMed.price,
-        expiryDate: false,
-        medicineName: oldMed.medicineName !== newMed.medicineName
-      };
+      // Check quantity changes
+      if (oldMed.quantity !== newMed.quantity) {
+        medicineChanges.push({
+          field: `medicine_${newMed.medicineName}_quantity`,
+          oldValue: oldMed.quantity,
+          newValue: newMed.quantity
+        });
+        changeDetails.push(`Quantity: ${oldMed.quantity} → ${newMed.quantity} units`);
+      }
+
+      // Check price changes
+      if (oldMed.price !== newMed.price) {
+        medicineChanges.push({
+          field: `medicine_${newMed.medicineName}_price`,
+          oldValue: oldMed.price,
+          newValue: newMed.price
+        });
+        changeDetails.push(`Price: ${this.formatCurrency(oldMed.price)} → ${this.formatCurrency(newMed.price)}`);
+      }
 
       // Check expiry date changes
       const oldExpiryDate = oldMed.expiryDate ? new Date(oldMed.expiryDate) : null;
       const newExpiryDate = newMed.expiryDate ? new Date(newMed.expiryDate) : null;
-      changedFields.expiryDate = oldExpiryDate?.getTime() !== newExpiryDate?.getTime();
-
-      // Only log quantity changes if quantity actually changed
-      if (changedFields.quantity) {
-        const quantityDifference = newMed.quantity - oldMed.quantity;
-        
-        // If only quantity changed, provide quantity + value impact details
-        if (changedFields.quantity && !changedFields.price && !changedFields.expiryDate && !changedFields.medicineName) {
-          const oldTotalValue = oldMed.quantity * oldMed.price;
-          const newTotalValue = newMed.quantity * newMed.price;
-          const valueDifference = newTotalValue - oldTotalValue;
-
-          medicineChanges.push({
-            field: `medicine_${newMed.medicineName}_quantity_change`,
-            oldValue: {
-              quantity: oldMed.quantity,
-              unitPrice: oldMed.price,
-              totalValue: oldTotalValue
-            },
-            newValue: {
-              quantity: newMed.quantity,
-              unitPrice: newMed.price,
-              totalValue: newTotalValue,
-              quantityDifference: quantityDifference,
-              valueDifference: valueDifference
-            }
-          });
-
-          changeDetails.push(`Quantity: ${oldMed.quantity} → ${newMed.quantity} units (${quantityDifference > 0 ? '+' : ''}${quantityDifference} units), Value impact: ${formatCurrency(Math.abs(valueDifference))} ${valueDifference > 0 ? 'increase' : 'decrease'}`);
-        } else {
-          // If quantity changed along with other fields, just show quantity change
-          medicineChanges.push({
-            field: `medicine_${newMed.medicineName}_quantity`,
-            oldValue: oldMed.quantity,
-            newValue: newMed.quantity
-          });
-          changeDetails.push(`Quantity: ${oldMed.quantity} → ${newMed.quantity} units (${quantityDifference > 0 ? '+' : ''}${quantityDifference} units)`);
-        }
-      }
-
-      // Only log price changes if price actually changed
-      if (changedFields.price) {
-        const priceDifference = newMed.price - oldMed.price;
-        
-        // If only price changed, provide price + value impact details
-        if (changedFields.price && !changedFields.quantity && !changedFields.expiryDate && !changedFields.medicineName) {
-          const oldTotalValue = oldMed.quantity * oldMed.price;
-          const newTotalValue = newMed.quantity * newMed.price;
-          const valueDifference = newTotalValue - oldTotalValue;
-
-          medicineChanges.push({
-            field: `medicine_${newMed.medicineName}_price_change`,
-            oldValue: {
-              unitPrice: oldMed.price,
-              quantity: oldMed.quantity,
-              totalValue: oldTotalValue
-            },
-            newValue: {
-              unitPrice: newMed.price,
-              quantity: newMed.quantity,
-              totalValue: newTotalValue,
-              priceDifference: priceDifference,
-              valueDifference: valueDifference
-            }
-          });
-
-          const percentageChange = ((priceDifference / oldMed.price) * 100).toFixed(2);
-          changeDetails.push(`Unit Price: ${formatCurrency(oldMed.price)} → ${formatCurrency(newMed.price)} (${priceDifference > 0 ? '+' : ''}${formatCurrency(Math.abs(priceDifference))}, ${percentageChange}% ${priceDifference > 0 ? 'increase' : 'decrease'}), Total value impact: ${formatCurrency(Math.abs(valueDifference))} ${valueDifference > 0 ? 'increase' : 'decrease'}`);
-        } else {
-          // If price changed along with other fields, just show price change
-          medicineChanges.push({
-            field: `medicine_${newMed.medicineName}_price`,
-            oldValue: oldMed.price,
-            newValue: newMed.price
-          });
-          
-          const percentageChange = ((priceDifference / oldMed.price) * 100).toFixed(2);
-          changeDetails.push(`Unit Price: ${formatCurrency(oldMed.price)} → ${formatCurrency(newMed.price)} (${priceDifference > 0 ? '+' : ''}${formatCurrency(Math.abs(priceDifference))}, ${percentageChange}% ${priceDifference > 0 ? 'increase' : 'decrease'})`);
-        }
-      }
-
-      // Only log expiry date changes if expiry date actually changed
-      if (changedFields.expiryDate) {
-        // Calculate days difference
-        let daysDifference = 0;
-        if (oldExpiryDate && newExpiryDate) {
-          daysDifference = Math.ceil((newExpiryDate.getTime() - oldExpiryDate.getTime()) / (1000 * 60 * 60 * 24));
-        }
-
+      const expiryChanged = oldExpiryDate?.getTime() !== newExpiryDate?.getTime();
+      
+      if (expiryChanged) {
         medicineChanges.push({
-          field: `medicine_${newMed.medicineName}_expiry_change`,
-          oldValue: {
-            expiryDate: formatDate(oldExpiryDate)
-          },
-          newValue: {
-            expiryDate: formatDate(newExpiryDate),
-            daysDifference: daysDifference
-          }
+          field: `medicine_${newMed.medicineName}_expiry`,
+          oldValue: this.formatDate(oldExpiryDate),
+          newValue: this.formatDate(newExpiryDate)
         });
-
-        const daysText = daysDifference > 0 ? `${daysDifference} days extended` : daysDifference < 0 ? `${Math.abs(daysDifference)} days shortened` : 'same period';
-        changeDetails.push(`Expiry Date: ${formatDate(oldExpiryDate)} → ${formatDate(newExpiryDate)} (${daysText})`);
+        changeDetails.push(`Expiry Date: ${this.formatDate(oldExpiryDate)} → ${this.formatDate(newExpiryDate)}`);
       }
 
-      // Only log medicine name changes if name actually changed
-      if (changedFields.medicineName) {
+      // Check medicine name changes
+      if (oldMed.medicineName !== newMed.medicineName) {
         medicineChanges.push({
           field: `medicine_name_change`,
-          oldValue: {
-            medicineName: oldMed.medicineName
-          },
-          newValue: {
-            medicineName: newMed.medicineName
-          }
+          oldValue: oldMed.medicineName,
+          newValue: newMed.medicineName
         });
-
         changeDetails.push(`Medicine Name: "${oldMed.medicineName}" → "${newMed.medicineName}"`);
       }
 
@@ -501,8 +419,8 @@ private static detectSuperDetailedMedicineChanges(oldMedicines: any[], newMedici
         hasChanges = true;
         detailedChanges.push(...medicineChanges);
         
-        // Create summary showing only what changed
-        const medicineSummary = `Medicine "${newMed.medicineName}" updated with complete details: ${changeDetails.join(', ')}`;
+        // Create simplified summary showing only what changed
+        const medicineSummary = `Medicine "${newMed.medicineName}" updated: ${changeDetails.join(', ')}`;
         summaryParts.push(medicineSummary);
       }
     }

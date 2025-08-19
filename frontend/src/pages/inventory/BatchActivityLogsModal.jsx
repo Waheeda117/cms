@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import Modal from "../../components/UI/Modal";
-import formatDate from "../../utils/date";
 import { getBatchActivityLogs } from "../../api/api";
 
 
@@ -63,6 +62,21 @@ const BatchActivityLogsModal = ({
         return { icon: Activity, color: "text-blue-500" };
     }
   };
+
+const formatDateTime = (value) => {
+  const date = new Date(value); // directly parse ISO timestamp
+  if (isNaN(date.getTime())) return "Invalid Date";
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // month is 0-based
+  const year = date.getFullYear();
+
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${hours}:${minutes} - ${day}/${month}/${year}`;
+};
+
 
   // Format change details
   const formatChange = (change) => {
@@ -125,34 +139,13 @@ const BatchActivityLogsModal = ({
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                         <div>
-                          {/* <h3 className={`font-semibold ${theme.textPrimary}`}>
-                            {log.action.charAt(0) + log.action.slice(1).toLowerCase()}
-                          </h3> */}
                           <p className={`text-sm ${theme.textSecondary} mt-1`}>
                             {log.details}
                           </p>
                         </div>
                         
-                        {/* <div className="flex items-center gap-2 text-sm">
-                          <Clock className={`w-4 h-4 ${theme.textMuted}`} />
-                          <span className={theme.textMuted}>
-                            {formatDate(log.timestamp)}
-                          </span>
-                        </div> */}
                       </div>
                       
-                      {/* {log.changes && log.changes.length > 0 && (
-                        <div className={`mt-3 p-3 rounded-lg ${theme.card} text-sm`}>
-                          <h4 className={`font-medium ${theme.textPrimary} mb-2`}>
-                            Changes:
-                          </h4>
-                          <div className="space-y-2">
-                            {log.changes.map((change, i) => (
-                              <div key={i}>{formatChange(change)}</div>
-                            ))}
-                          </div>
-                        </div>
-                      )} */}
                       
                       <div className="flex items-center gap-2 mt-3 text-sm">
                         <User className={`w-4 h-4 ${theme.textMuted}`} />
@@ -161,7 +154,7 @@ const BatchActivityLogsModal = ({
                         </span>
                         <Clock className={`w-4 h-4 ${theme.textMuted}`} />
                           <span className={theme.textMuted}>
-                            {formatDate(log.timestamp)}
+                            {formatDateTime(log.timestamp)}
                           </span>
                       </div>
                     </div>
