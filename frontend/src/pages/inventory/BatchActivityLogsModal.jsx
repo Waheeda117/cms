@@ -125,20 +125,20 @@ const BatchActivityLogsModal = ({
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                         <div>
-                          <h3 className={`font-semibold ${theme.textPrimary}`}>
+                          {/* <h3 className={`font-semibold ${theme.textPrimary}`}>
                             {log.action.charAt(0) + log.action.slice(1).toLowerCase()}
-                          </h3>
+                          </h3> */}
                           <p className={`text-sm ${theme.textSecondary} mt-1`}>
                             {log.details}
                           </p>
                         </div>
                         
-                        <div className="flex items-center gap-2 text-sm">
+                        {/* <div className="flex items-center gap-2 text-sm">
                           <Clock className={`w-4 h-4 ${theme.textMuted}`} />
                           <span className={theme.textMuted}>
                             {formatDate(log.timestamp)}
                           </span>
-                        </div>
+                        </div> */}
                       </div>
                       
                       {/* {log.changes && log.changes.length > 0 && (
@@ -159,6 +159,10 @@ const BatchActivityLogsModal = ({
                         <span className={theme.textMuted}>
                           {log.owner?.username || "System"}
                         </span>
+                        <Clock className={`w-4 h-4 ${theme.textMuted}`} />
+                          <span className={theme.textMuted}>
+                            {formatDate(log.timestamp)}
+                          </span>
                       </div>
                     </div>
                   </div>

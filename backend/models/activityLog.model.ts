@@ -34,7 +34,7 @@ const activityLogSchema = new Schema<IActivityLog>({
   details: {
     type: String,
     required: true,
-    maxlength: 500
+    maxlength: 1000,
   },
   owner: {
     type: Schema.Types.ObjectId,
