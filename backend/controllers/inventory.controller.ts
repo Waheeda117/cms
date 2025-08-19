@@ -1391,6 +1391,7 @@ export const getDashboardStats = async (req: AuthenticatedRequest, res: Response
 const getSummaryStats = async () => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1); // Start of tomorrow
     
     // Pipeline for general stats (total items, near expiry, already expired)
     const generalStatsPipeline = [
@@ -1404,27 +1405,21 @@ const getSummaryStats = async () => {
                 totalValue: "$medicines.totalAmount",
                 reorderLevel: "$medicines.reorderLevel",
                 expiryDate: "$medicines.expiryDate",
+                // Items expiring today or within 10 days from tomorrow
                 isNearExpiry: {
                     $and: [
-                        { 
-                            $gte: [
-                                { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
-                                { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
-                            ]
-                        },
+                        { $gte: ["$medicines.expiryDate", todayStart] }, // >= today (includes today)
                         {
                             $lte: [
                                 "$medicines.expiryDate",
-                                { $dateAdd: { startDate: new Date(), unit: "day", amount: 10 } }
+                                { $dateAdd: { startDate: todayStart, unit: "day", amount: 10 } }
                             ]
                         }
                     ]
                 },
+                // Items expired before today
                 isAlreadyExpired: {
-                    $lt: [
-                        { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
-                        { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
-                    ]
+                    $lt: ["$medicines.expiryDate", todayStart] // < today (excludes today)
                 }
             }
         }
@@ -1618,16 +1613,10 @@ const getExpiringSoonItems = async () => {
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
-            $addFields: {
-                expiryDateOnly: { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
-                todayDateOnly: { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
-            }
-        },
-        {
             $match: {
                 $and: [
-                    { $expr: { $gte: ["$expiryDateOnly", "$todayDateOnly"] } },
-                    { "medicines.expiryDate": { $lte: tenDaysFromNow } }
+                    { "medicines.expiryDate": { $gte: todayStart } }, // >= today (includes today)
+                    { "medicines.expiryDate": { $lte: tenDaysFromNow } } // <= 10 days from now
                 ]
             }
         },
@@ -1638,9 +1627,14 @@ const getExpiringSoonItems = async () => {
                 name: "$medicines.medicineName",
                 batch: "$batchNumber",
                 quantity: "$medicines.quantity",
-                expiry: "$expiryDateOnly",
+                expiry: {
+                    $dateToString: {
+                        format: "%Y-%m-%d",
+                        date: "$medicines.expiryDate"
+                    }
+                },
                 daysLeft: {
-                    $ceil: {
+                    $floor: { // Use floor to get whole days
                         $divide: [
                             { $subtract: ["$medicines.expiryDate", todayStart] },
                             86400000
@@ -1668,14 +1662,8 @@ const getAlreadyExpiredItems = async () => {
         { $match: { isDraft: false } },
         { $unwind: "$medicines" },
         {
-            $addFields: {
-                expiryDateOnly: { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
-                todayDateOnly: { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
-            }
-        },
-        {
             $match: {
-                $expr: { $lt: ["$expiryDateOnly", "$todayDateOnly"] }
+                "medicines.expiryDate": { $lt: todayStart } // < today (excludes today)
             }
         },
         { $sort: { "medicines.expiryDate": -1 } }, // Most recently expired first
@@ -1684,10 +1672,15 @@ const getAlreadyExpiredItems = async () => {
             $project: {
                 name: "$medicines.medicineName",
                 batch: "$batchNumber",
-                expiry: "$expiryDateOnly",
+                expiry: {
+                    $dateToString: {
+                        format: "%Y-%m-%d",
+                        date: "$medicines.expiryDate"
+                    }
+                },
                 quantity: "$medicines.quantity",
                 daysExpired: {
-                    $ceil: {
+                    $floor: { // Use floor to get whole days
                         $divide: [
                             { $subtract: [todayStart, "$medicines.expiryDate"] },
                             86400000 // milliseconds in a day
@@ -1724,16 +1717,10 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
             { $match: { isDraft: false } },
             { $unwind: "$medicines" },
             {
-                $addFields: {
-                    expiryDateOnly: { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
-                    todayDateOnly: { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
-                }
-            },
-            {
                 $match: {
                     $and: [
-                        { $expr: { $gte: ["$expiryDateOnly", "$todayDateOnly"] } },
-                        { "medicines.expiryDate": { $lte: tenDaysFromNow } }
+                        { "medicines.expiryDate": { $gte: todayStart } }, // >= today (includes today)
+                        { "medicines.expiryDate": { $lte: tenDaysFromNow } } // <= 10 days from now
                     ]
                 }
             },
@@ -1767,7 +1754,7 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
                         }
                     },
                     daysLeft: {
-                        $ceil: {
+                        $floor: { // Use floor to get whole days
                             $divide: [
                                 { $subtract: ["$earliestExpiry", todayStart] },
                                 86400000
@@ -1783,17 +1770,16 @@ export const getExpireSoonItems = async (req: AuthenticatedRequest, res: Respons
             { $match: { isDraft: false } },
             { $unwind: "$medicines" },
             {
-                $addFields: {
-                    expiryDateOnly: { $dateToString: { format: "%Y-%m-%d", date: "$medicines.expiryDate" } },
-                    todayDateOnly: { $dateToString: { format: "%Y-%m-%d", date: todayStart } }
+                $match: {
+                    $and: [
+                        { "medicines.expiryDate": { $gte: todayStart } }, // >= today (includes today)
+                        { "medicines.expiryDate": { $lte: tenDaysFromNow } } // <= 10 days from now
+                    ]
                 }
             },
             {
-                $match: {
-                    $and: [
-                        { $expr: { $gte: ["$expiryDateOnly", "$todayDateOnly"] } },
-                        { "medicines.expiryDate": { $lte: tenDaysFromNow } }
-                    ]
+                $group: {
+                    _id: "$medicines.medicineName"
                 }
             },
             { $count: "total" }

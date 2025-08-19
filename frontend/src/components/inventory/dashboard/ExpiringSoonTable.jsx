@@ -46,11 +46,11 @@ const ExpiringSoonTable = ({ theme, data }) => {
                     {item.name}
                   </h3>
                   <p className={`text-sm ${theme.textMuted}`}>
-                    Batch: {item.batch} • Exp: {item.expiry}
+                    Batch: {item.batch} • Expire Date: {item.expiry}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center">
+              {/* <div className="flex items-center">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   item.daysLeft < 5 
                     ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
@@ -58,7 +58,7 @@ const ExpiringSoonTable = ({ theme, data }) => {
                 }`}>
                   {item.daysLeft} days
                 </span>
-              </div>
+              </div> */}
             </motion.div>
           ))}
         </div>

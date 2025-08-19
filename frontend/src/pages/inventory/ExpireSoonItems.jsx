@@ -402,14 +402,14 @@ const ExpireSoonItems = () => {
                       Earliest Expiry
                     </span>
                   </th>
-                  <th 
+                  {/* <th 
                     className="px-6 py-3 text-center text-xs font-medium cursor-pointer hover:bg-opacity-50"
                     onClick={() => requestSort('daysLeft')}
                   >
                     <span className={`${theme.textMuted} tracking-wider`}>
                       Days Left
                     </span>
-                  </th>
+                  </th> */}
                   <th 
                     className="px-6 py-3 text-center text-xs font-medium cursor-pointer hover:bg-opacity-50"
                     onClick={() => requestSort('batches')}
@@ -479,7 +479,7 @@ const ExpireSoonItems = () => {
                         >
                           {item.earliestExpiry ? formatDate(item.earliestExpiry) : 'N/A'}
                         </td>
-                        <td
+                        {/* <td
                           className={`px-6 py-4 text-center text-sm font-semibold`}
                         >
                           <div className={`inline-flex items-center px-3 py-1 rounded-full ${
@@ -491,7 +491,7 @@ const ExpireSoonItems = () => {
                           }`}>
                             {daysLeft} days
                           </div>
-                        </td>
+                        </td> */}
                         <td
                           className={`px-6 py-4 text-center text-sm ${theme.textSecondary}`}
                         >

@@ -280,7 +280,7 @@ const handleBatchInputChange = (e) => {
                 {uploading
                  ? "Uploading..."
                   : attachments.length
-                  ? `Select Attachments  •  ${attachments.length} file(s) added`
+                  ? `Select Attachments  •  ${attachments.length} file(s)`
                   : "Select Attachments"}
               </button>
             </div>
