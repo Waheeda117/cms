@@ -46,18 +46,18 @@ const ExpiredItemsTable = ({ theme, data }) => {
                     {item.name}
                   </h3>
                   <p className={`text-sm ${theme.textMuted}`}>
-                    Batch: {item.batch} • Exp: {item.expiry} • Qty: {item.quantity}
+                    Batch: {item.batch} • Expire Date: {item.expiry} • Qty: {item.quantity}
                   </p>
                 </div>
               </div>
               <div className="flex items-center">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                {/* <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   item.daysExpired > 30 
                     ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
                     : 'bg-red-100 text-red-700 dark:bg-red-900/70 dark:text-red-300'
                 }`}>
                   {item.daysExpired} days ago
-                </span>
+                </span> */}
               </div>
             </motion.div>
           ))}

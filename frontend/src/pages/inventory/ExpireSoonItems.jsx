@@ -10,11 +10,13 @@ import {
   Search,
   Flame,
   AlertTriangle,
-  CalendarX
+  CalendarX,
+  ChevronLeft
 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import Pagination from "../../components/UI/Pagination";
 import { getExpireSoonItems } from "../../api/api";
+import { useNavigate } from "react-router-dom";
 
 const ExpireSoonItems = () => {
   const { theme } = useTheme();
@@ -24,37 +26,28 @@ const ExpireSoonItems = () => {
     direction: "ascending",
   });
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [expandedRows, setExpandedRows] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [data, setData] = useState({
-    items: [],
-    pagination: {},
-  });
+  const [allItems, setAllItems] = useState([]); // Store all items for client-side operations
   
-  const itemsPerPage = 100;
+  const navigate = useNavigate();
 
-  // Fetch soon-to-expire items data
-  const fetchExpireSoonItems = async (page = 1, search = "") => {
+  // Fetch all soon-to-expire items (without pagination on server)
+  const fetchExpireSoonItems = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const params = {
-        page: page,
-        limit: itemsPerPage,
-        search: search,
-        sortBy: sortConfig.key || 'daysLeft',
-        sortOrder: sortConfig.direction === 'ascending' ? 'asc' : 'desc'
-      };
-
-      const response = await getExpireSoonItems(params);
+      // Fetch all items without pagination parameters for client-side handling
+      const response = await getExpireSoonItems({
+        sortBy: 'daysLeft',
+        sortOrder: 'asc'
+      });
       
       if (response.success) {
-        setData({
-          items: response.data.items,
-          pagination: response.data.pagination
-        });
+        setAllItems(response.data.items || []);
       } else {
         setError('Failed to fetch soon-to-expire items');
       }
@@ -68,28 +61,67 @@ const ExpireSoonItems = () => {
 
   // Initial data fetch
   useEffect(() => {
-    fetchExpireSoonItems(currentPage, searchTerm);
-  }, [currentPage]);
+    fetchExpireSoonItems();
+  }, []);
 
-  // Handle search with debounce
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (currentPage === 1) {
-        fetchExpireSoonItems(1, searchTerm);
-      } else {
-        setCurrentPage(1);
-      }
-    }, 500);
+  // Client-side filtering function
+  const getFilteredItems = () => {
+    let filteredItems = [...allItems];
 
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
-
-  // Handle sort changes
-  useEffect(() => {
-    if (sortConfig.key) {
-      fetchExpireSoonItems(currentPage, searchTerm);
+    // Apply search filter
+    if (searchTerm.trim()) {
+      filteredItems = filteredItems.filter(item =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-  }, [sortConfig]);
+
+    // Apply sorting
+    if (sortConfig.key) {
+      filteredItems.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        // Handle special cases
+        if (sortConfig.key === 'batches') {
+          aValue = a.batches.length;
+          bValue = b.batches.length;
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return filteredItems;
+  };
+
+  // Get paginated items
+  const getPaginatedItems = () => {
+    const filteredItems = getFilteredItems();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    
+    return {
+      items: filteredItems.slice(startIndex, endIndex),
+      totalItems: filteredItems.length,
+      totalPages: Math.ceil(filteredItems.length / itemsPerPage),
+      hasNextPage: endIndex < filteredItems.length,
+      hasPrevPage: currentPage > 1
+    };
+  };
+
+  const paginatedData = getPaginatedItems();
+  const { items, totalItems, totalPages, hasNextPage, hasPrevPage } = paginatedData;
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   // Toggle row expansion
   const toggleRowExpansion = (medicineId) => {
@@ -101,7 +133,18 @@ const ExpireSoonItems = () => {
 
   // Handle refresh
   const handleRefresh = () => {
-    fetchExpireSoonItems(currentPage, searchTerm);
+    fetchExpireSoonItems();
+  };
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Handle items per page change
+  const handleLimitChange = (newLimit) => {
+    setItemsPerPage(newLimit);
+    setCurrentPage(1); // Reset to first page when changing limit
   };
 
   // Format date for display
@@ -117,18 +160,20 @@ const ExpireSoonItems = () => {
       direction = "descending";
     }
     setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to first page when sorting
   };
 
-  // Calculate summary values
+  // Calculate summary values based on filtered items
   const calculateSummary = () => {
+    const filteredItems = getFilteredItems();
     const summary = {
-      totalItems: data.pagination.totalItems || 0,
+      totalItems: filteredItems.length,
       totalQuantity: 0,
       criticalItems: 0,
       totalBatches: 0
     };
     
-    data.items.forEach(item => {
+    filteredItems.forEach(item => {
       summary.totalQuantity += item.totalQuantity;
       summary.totalBatches += item.batches.length;
       if (item.daysLeft <= 3) {
@@ -140,12 +185,11 @@ const ExpireSoonItems = () => {
   };
 
   const summary = calculateSummary();
-  const { items, pagination } = data;
 
   // Summary cards
   const summaryCards = [
     {
-      title: "Total Items Expiring Soon",
+      title: "Total Items",
       value: summary.totalItems,
       icon: CalendarClock,
       color: "text-amber-500",
@@ -184,7 +228,7 @@ const ExpireSoonItems = () => {
   };
 
   // Loading state
-  if (loading && items.length === 0) {
+  if (loading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center min-h-96">
@@ -196,7 +240,7 @@ const ExpireSoonItems = () => {
   }
 
   // Error state
-  if (error && items.length === 0) {
+  if (error && allItems.length === 0) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
@@ -218,6 +262,22 @@ const ExpireSoonItems = () => {
 
   return (
     <div className="p-6">
+      {/* Back Navigation */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mb-6"
+      >
+        <button
+          onClick={() => navigate(-1)}
+          className={`flex items-center space-x-2 py-2 px-2 ${theme.cardSecondary} hover:bg-opacity-70 transition-colors rounded-lg`}
+        >
+          <ChevronLeft className={`w-5 h-5 ${theme.textPrimary}`} />
+          <span className={theme.textPrimary}>Back to Dashboard</span>
+        </button>
+      </motion.div>
+
       {/* Page Title */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -234,13 +294,6 @@ const ExpireSoonItems = () => {
               Monitor items that will expire within the next 10 days
             </p>
           </div>
-          {/* <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className={`p-3 ${theme.cardSecondary} rounded-lg hover:bg-opacity-70 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <RefreshCw className={`w-5 h-5 ${theme.textMuted} ${loading ? 'animate-spin' : ''}`} />
-          </button> */}
         </div>
       </motion.div>
 
@@ -302,7 +355,7 @@ const ExpireSoonItems = () => {
       >
         <div className="p-6">
           {/* Search */}
-          {/* <div className="mb-6">
+          <div className="mb-6">
             <div className="relative">
               <Search
                 className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme.textMuted}`}
@@ -315,7 +368,7 @@ const ExpireSoonItems = () => {
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
               />
             </div>
-          </div> */}
+          </div>
 
           {/* Table */}
           <div className="overflow-x-auto">
@@ -349,14 +402,14 @@ const ExpireSoonItems = () => {
                       Earliest Expiry
                     </span>
                   </th>
-                  <th 
+                  {/* <th 
                     className="px-6 py-3 text-center text-xs font-medium cursor-pointer hover:bg-opacity-50"
                     onClick={() => requestSort('daysLeft')}
                   >
                     <span className={`${theme.textMuted} tracking-wider`}>
                       Days Left
                     </span>
-                  </th>
+                  </th> */}
                   <th 
                     className="px-6 py-3 text-center text-xs font-medium cursor-pointer hover:bg-opacity-50"
                     onClick={() => requestSort('batches')}
@@ -426,7 +479,7 @@ const ExpireSoonItems = () => {
                         >
                           {item.earliestExpiry ? formatDate(item.earliestExpiry) : 'N/A'}
                         </td>
-                        <td
+                        {/* <td
                           className={`px-6 py-4 text-center text-sm font-semibold`}
                         >
                           <div className={`inline-flex items-center px-3 py-1 rounded-full ${
@@ -438,7 +491,7 @@ const ExpireSoonItems = () => {
                           }`}>
                             {daysLeft} days
                           </div>
-                        </td>
+                        </td> */}
                         <td
                           className={`px-6 py-4 text-center text-sm ${theme.textSecondary}`}
                         >
@@ -453,11 +506,6 @@ const ExpireSoonItems = () => {
                         <tr className={`${theme.borderSecondary} border-b`}>
                           <td colSpan="6" className="px-4 py-4 bg-gray-50 dark:bg-gray-800 bg-opacity-50">
                             <div className="pl-16 pr-4">
-                              <h3 className={`font-semibold ${theme.textPrimary} mb-3 flex items-center`}>
-                                <Package className="w-4 h-4 mr-2" />
-                                Batch Details
-                              </h3>
-                              
                               <div className="overflow-x-auto">
                                 <table className="w-full min-w-full">
                                   <thead>
@@ -465,9 +513,6 @@ const ExpireSoonItems = () => {
                                       <th className="px-4 py-2 text-left text-xs font-medium">
                                         Batch Number
                                       </th>
-                                      {/* <th className="px-4 py-2 text-left text-xs font-medium">
-                                        Bill ID
-                                      </th> */}
                                       <th className="px-4 py-2 text-center text-xs font-medium">
                                         Quantity
                                       </th>
@@ -494,9 +539,6 @@ const ExpireSoonItems = () => {
                                           <td className="px-4 py-3 text-sm">
                                             {batch.batchNumber}
                                           </td>
-                                          {/* <td className="px-4 py-3 text-sm">
-                                            {batch.billID || 'N/A'}
-                                          </td> */}
                                           <td className="px-4 py-3 text-center text-sm font-medium">
                                             {batch.quantity}
                                           </td>
@@ -553,12 +595,16 @@ const ExpireSoonItems = () => {
         </div>
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
+        {totalPages > 1 && (
           <Pagination
-            currentPage={pagination.currentPage || 1}
-            totalPages={pagination.totalPages || 1}
-            onPageChange={setCurrentPage}
-            className="mt-4"
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            hasNextPage={hasNextPage}
+            hasPrevPage={hasPrevPage}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
           />
         )}
       </motion.div>

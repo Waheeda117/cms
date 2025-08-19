@@ -35,18 +35,42 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
     batchDetails.overallPrice &&
     parseFloat(batchDetails.overallPrice) > 0;
 
-  const handleBatchInputChange = (e) => {
-    const { name, value } = e.target;
+const handleBatchInputChange = (e) => {
+  const { name, value } = e.target;
 
-    // Special handling for billID (cheque number) - only allow numeric input
-    if (name === 'billID') {
-      // Remove any non-numeric characters
-      const numericValue = value.replace(/[^0-9]/g, '');
-      setBatchDetails((prev) => ({ ...prev, [name]: numericValue }));
-    } else {
-      setBatchDetails((prev) => ({ ...prev, [name]: value }));
+  // Special handling for billID (cheque number) - only allow numeric input with max 7 digits
+  if (name === 'billID') {
+    // Remove any non-numeric characters and limit to 7 digits
+    const numericValue = value.replace(/[^0-9]/g, '').slice(0, 7);
+    setBatchDetails((prev) => ({ ...prev, [name]: numericValue }));
+  } 
+  // Special handling for batchNumber - limit to 8 characters
+  else if (name === 'batchNumber') {
+    // Limit to 8 characters
+    const limitedValue = value.slice(0, 8);
+    setBatchDetails((prev) => ({ ...prev, [name]: limitedValue }));
+  }
+  // Special handling for overallPrice - limit to 8 digits (including decimal part)
+  else if (name === 'overallPrice') {
+    // Allow digits and one decimal point, limit total digits to 8
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    const parts = cleanValue.split('.');
+    
+    if (parts.length > 2) {
+      // More than one decimal point, ignore this input
+      return;
     }
-  };
+    
+    // Combine integer and decimal parts, limit total to 8 digits
+    const totalDigits = (parts[0] || '').length + (parts[1] || '').length;
+    if (totalDigits <= 8) {
+      setBatchDetails((prev) => ({ ...prev, [name]: cleanValue }));
+    }
+  } 
+  else {
+    setBatchDetails((prev) => ({ ...prev, [name]: value }));
+  }
+};
 
   // Handle key press for cheque number input - prevent non-numeric characters
   const handleChequeNumberKeyPress = (e) => {
@@ -166,8 +190,9 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
                 name="batchNumber"
                 value={batchDetails.batchNumber}
                 onChange={handleBatchInputChange}
+                maxLength={8}
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                placeholder="Enter batch number"
+                placeholder="Enter batch number (max 8 digits)"
                 required
               />
             </div>
@@ -190,8 +215,9 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
                 onChange={handleBatchInputChange}
                 step="0.01"
                 min="0.01"
+                max="99999999"
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                placeholder="Enter overall price"
+                placeholder="Enter overall price (max 8 digits)"
                 required
               />
             </div>
@@ -216,8 +242,9 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
                 value={batchDetails.billID}
                 onChange={handleBatchInputChange}
                 onKeyDown={handleChequeNumberKeyPress}
+                maxLength={7}
                 className={`w-full pl-10 pr-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                placeholder="Enter Cheque Number (numbers only)"
+                placeholder="Enter Cheque Number (max 7 digits)"
                 pattern="[0-9]*"
                 inputMode="numeric"
                 required
@@ -253,7 +280,7 @@ const AddStockModal = ({ isOpen, onClose, existingBatches }) => {
                 {uploading
                  ? "Uploading..."
                   : attachments.length
-                  ? `Select Attachments  •  ${attachments.length} file(s) added`
+                  ? `Select Attachments  •  ${attachments.length} file(s)`
                   : "Select Attachments"}
               </button>
             </div>

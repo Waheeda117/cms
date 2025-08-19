@@ -726,7 +726,7 @@ const AddBatch = () => {
 
         {/* Attachments Preview */}
         {previewUrls.length > 0 && (
-          <div className={`${theme.card} rounded-lg border ${theme.borderSecondary} p-4 mb-8 max-w-5xl`}>
+          <div className={`${theme.card} rounded-lg border ${theme.borderSecondary} p-4 mb-8`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className={`text-sm font-semibold ${theme.textPrimary}`}>
                 Attachments{" "}

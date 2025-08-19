@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
@@ -8,6 +8,7 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   RefreshCw,
   User,
   DollarSign,
@@ -16,6 +17,8 @@ import {
 import { useTheme } from "../../hooks/useTheme";
 import Modal from "../../components/UI/Modal";
 import Pagination from "../../components/UI/Pagination";
+import { useNavigate } from "react-router-dom";
+
 import { 
   getAllExpiredMedicines, 
   discardExpiredMedicineFromAllBatches,
@@ -52,10 +55,26 @@ const ExpiredItems = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState(null);
   
-  const itemsPerPage = 100;
+  const itemsPerPage = 10;
+  const navigate = useNavigate();
+  
+
+// Client-side filtered data for expired items
+const filteredExpiredMedicines = useMemo(() => {
+  if (!data.expiredMedicines || !searchTerm) return data.expiredMedicines;
+  
+  return data.expiredMedicines.filter(medicine => {
+    const medicineName = medicine.medicineName?.toLowerCase() || '';
+    const medicineId = medicine.medicineId?.toString().toLowerCase() || '';
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    return medicineName.includes(searchTermLower) || 
+           medicineId.includes(searchTermLower);
+  });
+}, [data.expiredMedicines, searchTerm]);
 
   // Fetch expired medicines data
-  const fetchExpiredMedicines = async (page = 1, search = "") => {
+  const fetchExpiredMedicines = async (page = 1) => {
     try {
       setLoading(true);
       setError(null);
@@ -63,7 +82,6 @@ const ExpiredItems = () => {
       const params = {
         page: page,
         limit: itemsPerPage,
-        search: search,
         sortBy: sortConfig.key || 'medicineName',
         sortOrder: sortConfig.direction === 'ascending' ? 'asc' : 'desc'
       };
@@ -115,37 +133,31 @@ const ExpiredItems = () => {
   // Initial data fetch
   useEffect(() => {
     if (activeTab === 'expired') {
-      fetchExpiredMedicines(currentPage, searchTerm);
+      fetchExpiredMedicines(currentPage);
     } else {
       fetchDiscardHistory(currentPage, searchTerm);
     }
   }, [currentPage, activeTab]);
 
-  // Handle search with debounce
+  // Handle search for discard history (server-side)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (currentPage === 1) {
-        if (activeTab === 'expired') {
-          fetchExpiredMedicines(1, searchTerm);
-        } else {
+    if (activeTab === 'history') {
+      const timeoutId = setTimeout(() => {
+        if (currentPage === 1) {
           fetchDiscardHistory(1, searchTerm);
+        } else {
+          setCurrentPage(1); // This will trigger useEffect above
         }
-      } else {
-        setCurrentPage(1); // This will trigger useEffect above
-      }
-    }, 500);
+      }, 500);
 
-    return () => clearTimeout(timeoutId);
+      return () => clearTimeout(timeoutId);
+    }
   }, [searchTerm, activeTab]);
 
-  // Handle sort changes
+  // Handle sort changes for expired items (server-side)
   useEffect(() => {
-    if (sortConfig.key) {
-      if (activeTab === 'expired') {
-        fetchExpiredMedicines(currentPage, searchTerm);
-      } else {
-        fetchDiscardHistory(currentPage, searchTerm);
-      }
+    if (sortConfig.key && activeTab === 'expired') {
+      fetchExpiredMedicines(currentPage);
     }
   }, [sortConfig]);
 
@@ -160,7 +172,7 @@ const ExpiredItems = () => {
   // Handle refresh
   const handleRefresh = () => {
     if (activeTab === 'expired') {
-      fetchExpiredMedicines(currentPage, searchTerm);
+      fetchExpiredMedicines(currentPage);
     } else {
       fetchDiscardHistory(currentPage, searchTerm);
     }
@@ -209,7 +221,7 @@ const ExpiredItems = () => {
         
         // Refresh data
         if (activeTab === 'expired') {
-          await fetchExpiredMedicines(currentPage, searchTerm);
+          await fetchExpiredMedicines(currentPage);
         }
         await fetchDiscardHistory(1, ''); // Refresh history to show new record
       } else {
@@ -223,7 +235,7 @@ const ExpiredItems = () => {
     }
   };
 
-  const { expiredMedicines, summary, pagination } = data;
+  const { summary, pagination } = data;
 
   // Summary cards for expired items
   const expiredSummaryCards = [
@@ -290,7 +302,7 @@ const ExpiredItems = () => {
   ];
 
   // Loading state
-  if (loading && activeTab === 'expired' && expiredMedicines.length === 0) {
+  if (loading && activeTab === 'expired' && data.expiredMedicines.length === 0) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center min-h-96">
@@ -302,7 +314,7 @@ const ExpiredItems = () => {
   }
 
   // Error state
-  if (error && activeTab === 'expired' && expiredMedicines.length === 0) {
+  if (error && activeTab === 'expired' && data.expiredMedicines.length === 0) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
@@ -324,6 +336,22 @@ const ExpiredItems = () => {
 
   return (
     <div className="p-6">
+      {/* Back Navigation */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mb-6"
+      >
+        <button
+          onClick={() => navigate(-1)}
+          className={`flex items-center space-x-2 py-2 px-2 ${theme.cardSecondary} hover:bg-opacity-70 transition-colors rounded-lg`}
+        >
+          <ChevronLeft className={`w-5 h-5 ${theme.textPrimary}`} />
+          <span className={theme.textPrimary}>Back to Dashboard</span>
+        </button>
+      </motion.div>
+
       {/* Page Title */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -340,13 +368,6 @@ const ExpiredItems = () => {
               View and manage expired medicines across all batches
             </p>
           </div>
-          {/* <button
-            onClick={handleRefresh}
-            disabled={loading || historyLoading}
-            className={`p-3 ${theme.cardSecondary} rounded-lg hover:bg-opacity-70 transition-colors ${(loading || historyLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <RefreshCw className={`w-5 h-5 ${theme.textMuted} ${(loading || historyLoading) ? 'animate-spin' : ''}`} />
-          </button> */}
         </div>
       </motion.div>
 
@@ -358,7 +379,10 @@ const ExpiredItems = () => {
               ? 'text-blue-500 border-b-2 border-blue-500'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
-          onClick={() => setActiveTab('expired')}
+          onClick={() => {
+            setActiveTab('expired');
+            setCurrentPage(1);
+          }}
         >
           <CalendarX className="w-4 h-4 mr-2" />
           Expired Medicines
@@ -369,7 +393,10 @@ const ExpiredItems = () => {
               ? 'text-blue-500 border-b-2 border-blue-500'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
-          onClick={() => setActiveTab('history')}
+          onClick={() => {
+            setActiveTab('history');
+            setCurrentPage(1);
+          }}
         >
           <History className="w-4 h-4 mr-2" />
           Discard History
@@ -510,7 +537,7 @@ const ExpiredItems = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {expiredMedicines.map((medicine) => {
+                    {filteredExpiredMedicines.map((medicine) => {
                       const isExpanded = expandedRows[medicine.medicineId];
                       return (
                         <React.Fragment key={medicine.medicineId}>
@@ -541,9 +568,6 @@ const ExpiredItems = () => {
                                   <div className={`font-medium ${theme.textPrimary}`}>
                                     {medicine.medicineName}
                                   </div>
-                                  {/* <div className={`text-sm ${theme.textMuted}`}>
-                                    ID: {medicine.medicineId}
-                                  </div> */}
                                 </div>
                               </div>
                             </td>
@@ -597,11 +621,6 @@ const ExpiredItems = () => {
                             <tr className={`${theme.borderSecondary} border-b`}>
                               <td colSpan="8" className="px-4 py-4 bg-gray-50 dark:bg-gray-800 bg-opacity-50">
                                 <div className="pl-16 pr-4">
-                                  <h3 className={`font-semibold ${theme.textPrimary} mb-3 flex items-center`}>
-                                    <Package className="w-4 h-4 mr-2" />
-                                    Batch Details
-                                  </h3>
-                                  
                                   <div className="overflow-x-auto">
                                     <table className="w-full min-w-full">
                                       <thead>
@@ -673,7 +692,7 @@ const ExpiredItems = () => {
               </div>
 
               {/* Empty State */}
-              {expiredMedicines.length === 0 && !loading && (
+              {filteredExpiredMedicines.length === 0 && !loading && (
                 <div className="text-center py-12">
                   <CalendarX
                     className={`w-16 h-16 ${theme.textMuted} mx-auto mb-4`}
@@ -697,6 +716,10 @@ const ExpiredItems = () => {
               <Pagination
                 currentPage={pagination.currentPage || 1}
                 totalPages={pagination.totalPages || 1}
+                totalItems={pagination.totalItems || 0}
+                itemsPerPage={itemsPerPage}
+                hasNextPage={pagination.hasNextPage || false}
+                hasPrevPage={pagination.hasPrevPage || false}
                 onPageChange={setCurrentPage}
                 className="mt-4"
               />
@@ -820,9 +843,6 @@ const ExpiredItems = () => {
                               <div className={`font-medium ${theme.textPrimary}`}>
                                 {record.medicineName}
                               </div>
-                              {/* <div className={`text-sm ${theme.textMuted}`}>
-                                ID: {record.medicineId}
-                              </div> */}
                             </div>
                           </div>
                         </td>
@@ -898,6 +918,10 @@ const ExpiredItems = () => {
               <Pagination
                 currentPage={discardHistoryData.pagination.currentPage || 1}
                 totalPages={discardHistoryData.pagination.totalPages || 1}
+                totalItems={discardHistoryData.pagination.totalItems || 0}
+                itemsPerPage={itemsPerPage}
+                hasNextPage={discardHistoryData.pagination.hasNextPage || false}
+                hasPrevPage={discardHistoryData.pagination.hasPrevPage || false}
                 onPageChange={setCurrentPage}
                 className="mt-4"
               />
