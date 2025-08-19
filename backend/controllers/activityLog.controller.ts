@@ -9,7 +9,7 @@ import mongoose from "mongoose";
 export const getBatchActivityLogs = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { batchId } = req.params;
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 200 } = req.query;
 
     if (!batchId || !mongoose.Types.ObjectId.isValid(batchId)) {
       res.status(400).json({
