@@ -9,13 +9,13 @@ import {
 
 const SummaryCards = ({ theme, data }) => {
   const summaryCards = [
-    {
-      title: "Total Items",
-      value: data?.totalItems || 0,
-      icon: Package,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500 bg-opacity-20 border-blue-500",
-    },
+    // {
+    //   title: "Total Items",
+    //   value: data?.totalItems || 0,
+    //   icon: Package,
+    //   color: "text-blue-500",
+    //   bgColor: "bg-blue-500 bg-opacity-20 border-blue-500",
+    // },
     {
       title: "Low Stock Medicines",
       value: data?.lowStock || 0,
@@ -26,6 +26,13 @@ const SummaryCards = ({ theme, data }) => {
     {
       title: "Expiring Soon",
       value: data?.nearExpiry || 0,
+      icon: CalendarX,
+      color: "text-red-500",
+      bgColor: "bg-red-500 bg-opacity-20 border-red-500",
+    },
+    {
+      title: "Expired Items",
+      value: data?.alreadyExpired || 0,
       icon: CalendarX,
       color: "text-red-500",
       bgColor: "bg-red-500 bg-opacity-20 border-red-500",

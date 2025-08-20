@@ -1453,8 +1453,12 @@ const getSummaryStats = async () => {
     ]);
     
     const totalItems = generalResults.length;
-    const nearExpiryCount = generalResults.filter(item => item.isNearExpiry).length;
-    const alreadyExpiredCount = generalResults.filter(item => item.isAlreadyExpired).length;
+    const nearExpiryCount = [...new Set(
+    generalResults.filter(item => item.isNearExpiry).map(item => item.medicineName)
+)].length;
+    const alreadyExpiredCount = [...new Set(
+    generalResults.filter(item => item.isAlreadyExpired).map(item => item.medicineName)
+)].length;
     const totalStockValue = generalResults.reduce((sum, item) => sum + item.totalValue, 0);
     
     // Get the correct low stock count
@@ -1615,28 +1619,60 @@ const getExpiringSoonItems = async () => {
         {
             $match: {
                 $and: [
-                    { "medicines.expiryDate": { $gte: todayStart } }, // >= today (includes today)
-                    { "medicines.expiryDate": { $lte: tenDaysFromNow } } // <= 10 days from now
+                    { "medicines.expiryDate": { $gte: todayStart } },
+                    { "medicines.expiryDate": { $lte: tenDaysFromNow } }
                 ]
             }
         },
-        { $sort: { "medicines.expiryDate": 1 } },
+        {
+            $group: {
+                _id: "$medicines.medicineName",
+                batches: {
+                    $push: {
+                        batchNumber: "$batchNumber",
+                        quantity: "$medicines.quantity",
+                        expiry: "$medicines.expiryDate",
+                        daysLeft: {
+                            $floor: {
+                                $divide: [
+                                    { $subtract: ["$medicines.expiryDate", todayStart] },
+                                    86400000
+                                ]
+                            }
+                        }
+                    }
+                },
+                totalQuantity: { $sum: "$medicines.quantity" },
+                earliestExpiry: { $min: "$medicines.expiryDate" }
+            }
+        },
+        { $sort: { earliestExpiry: 1 } },
         { $limit: 5 },
         {
             $project: {
-                name: "$medicines.medicineName",
-                batch: "$batchNumber",
-                quantity: "$medicines.quantity",
-                expiry: {
-                    $dateToString: {
-                        format: "%Y-%m-%d",
-                        date: "$medicines.expiryDate"
+                name: "$_id",
+                totalQuantity: 1,
+                batches: {
+                    $map: {
+                        input: "$batches",
+                        as: "batch",
+                        in: {
+                            batchNumber: "$$batch.batchNumber",
+                            quantity: "$$batch.quantity",
+                            expiry: {
+                                $dateToString: {
+                                    format: "%Y-%m-%d",
+                                    date: "$$batch.expiry"
+                                }
+                            },
+                            daysLeft: "$$batch.daysLeft"
+                        }
                     }
                 },
                 daysLeft: {
-                    $floor: { // Use floor to get whole days
+                    $floor: {
                         $divide: [
-                            { $subtract: ["$medicines.expiryDate", todayStart] },
+                            { $subtract: ["$earliestExpiry", todayStart] },
                             86400000
                         ]
                     }
@@ -1649,11 +1685,13 @@ const getExpiringSoonItems = async () => {
     
     return results.map((item: any, index: number) => ({
         id: index + 1,
-        ...item
+        name: item.name,
+        totalQuantity: item.totalQuantity,
+        daysLeft: item.daysLeft,
+        batches: item.batches
     }));
 };
 
-// NEW: Helper function for already expired items
 const getAlreadyExpiredItems = async () => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1663,27 +1701,59 @@ const getAlreadyExpiredItems = async () => {
         { $unwind: "$medicines" },
         {
             $match: {
-                "medicines.expiryDate": { $lt: todayStart } // < today (excludes today)
+                "medicines.expiryDate": { $lt: todayStart }
             }
         },
-        { $sort: { "medicines.expiryDate": -1 } }, // Most recently expired first
+        {
+            $group: {
+                _id: "$medicines.medicineName",
+                batches: {
+                    $push: {
+                        batchNumber: "$batchNumber",
+                        quantity: "$medicines.quantity",
+                        expiry: "$medicines.expiryDate",
+                        daysExpired: {
+                            $floor: {
+                                $divide: [
+                                    { $subtract: [todayStart, "$medicines.expiryDate"] },
+                                    86400000
+                                ]
+                            }
+                        }
+                    }
+                },
+                totalQuantity: { $sum: "$medicines.quantity" },
+                mostRecentExpiry: { $max: "$medicines.expiryDate" }
+            }
+        },
+        { $sort: { mostRecentExpiry: -1 } },
         { $limit: 5 },
         {
             $project: {
-                name: "$medicines.medicineName",
-                batch: "$batchNumber",
-                expiry: {
-                    $dateToString: {
-                        format: "%Y-%m-%d",
-                        date: "$medicines.expiryDate"
+                name: "$_id",
+                totalQuantity: 1,
+                batches: {
+                    $map: {
+                        input: "$batches",
+                        as: "batch",
+                        in: {
+                            batchNumber: "$$batch.batchNumber",
+                            quantity: "$$batch.quantity",
+                            expiry: {
+                                $dateToString: {
+                                    format: "%Y-%m-%d",
+                                    date: "$$batch.expiry"
+                                }
+                            },
+                            daysExpired: "$$batch.daysExpired"
+                        }
                     }
                 },
-                quantity: "$medicines.quantity",
                 daysExpired: {
-                    $floor: { // Use floor to get whole days
+                    $floor: {
                         $divide: [
-                            { $subtract: [todayStart, "$medicines.expiryDate"] },
-                            86400000 // milliseconds in a day
+                            { $subtract: [todayStart, "$mostRecentExpiry"] },
+                            86400000
                         ]
                     }
                 }
@@ -1695,7 +1765,10 @@ const getAlreadyExpiredItems = async () => {
     
     return results.map((item: any, index: number) => ({
         id: index + 1,
-        ...item
+        name: item.name,
+        totalQuantity: item.totalQuantity,
+        daysExpired: item.daysExpired,
+        batches: item.batches
     }));
 };
 
