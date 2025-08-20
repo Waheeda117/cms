@@ -7,7 +7,8 @@ import {
   getMedicineById,
   updateMedicine,
   deleteMedicine,
-  getMedicinesDropdown
+  getMedicinesDropdown,
+  createBulkMedicines
 } from "../controllers/medicines.controller.js";
 
 const router = express.Router();
@@ -23,6 +24,8 @@ router.get("/", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inve
 
 // Create new medicine
 router.post("/", authorizeRoles("admin", "pharmacist_inventory"), createMedicine);
+router.post('/bulk', authorizeRoles("admin", "pharmacist_inventory"), createBulkMedicines);
+
 
 // Get single medicine by medicineId
 router.get("/:id", authorizeRoles("admin", "pharmacist_inventory", "pharmacist_inventory_staff"), getMedicineById);

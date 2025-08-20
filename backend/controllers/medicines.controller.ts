@@ -268,10 +268,17 @@ export const deleteMedicine = async (req: AuthenticatedRequest, res: Response): 
 // Get medicines for dropdown (active only)
 export const getMedicinesDropdown = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const medicines = await Medicine.find({ isActive: true })
+    let medicines = await Medicine.find({ isActive: true })
       .select('medicineId name')
       .sort({ name: 1 })
       .lean();
+
+    // Put medicineId === 1 on top
+    medicines = medicines.sort((a, b) => {
+      if (a.medicineId === 1) return -1;
+      if (b.medicineId === 1) return 1;
+      return 0;
+    });
 
     res.status(200).json({
       success: true,
@@ -280,6 +287,139 @@ export const getMedicinesDropdown = async (req: AuthenticatedRequest, res: Respo
 
   } catch (error: any) {
     console.error("Error in getMedicinesDropdown:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+
+
+// Create medicines in bulk
+export const createBulkMedicines = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { medicines } = req.body;
+
+    // Validate input
+    if (!medicines || !Array.isArray(medicines) || medicines.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: "Medicines array is required and cannot be empty"
+      });
+      return;
+    }
+
+    const results: {
+      success: { name: string; medicineId: number }[];
+      failed: { name: string; error: string }[];
+      duplicates: { name: string; error: string }[];
+    } = {
+      success: [],
+      failed: [],
+      duplicates: []
+    };
+
+    // Validate each medicine name
+    const nameRegex = /^[a-zA-Z0-9 ]+$/;
+    
+    for (const medicine of medicines) {
+      const { name } = medicine;
+      
+      // Validate name format
+      if (!name || typeof name !== 'string') {
+        results.failed.push({
+          name: name || 'Unknown',
+          error: 'Medicine name is required'
+        });
+        continue;
+      }
+
+      const trimmedName = name.trim();
+      
+      // Validate name constraints
+      if (!nameRegex.test(trimmedName)) {
+        results.failed.push({
+          name: trimmedName,
+          error: 'Only alphabets and digits are allowed'
+        });
+        continue;
+      }
+
+      if (trimmedName.length > 50) {
+        results.failed.push({
+          name: trimmedName,
+          error: 'Medicine name cannot exceed 50 characters'
+        });
+        continue;
+      }
+
+      if (trimmedName.length === 0) {
+        results.failed.push({
+          name: trimmedName,
+          error: 'Medicine name cannot be empty'
+        });
+        continue;
+      }
+
+      try {
+        // Check if medicine already exists
+        const existingMedicine = await Medicine.findOne({ 
+          name: { $regex: new RegExp(`^${trimmedName}$`, 'i') } 
+        });
+
+        if (existingMedicine) {
+          results.duplicates.push({
+            name: trimmedName,
+            error: 'Medicine already exists'
+          });
+          continue;
+        }
+
+        // Get next auto-increment ID
+        const medicineId = await getNextMedicineId();
+
+        // Create new medicine
+        const newMedicine = new Medicine({
+          medicineId,
+          name: trimmedName,
+          description: "",
+          category: "",
+          manufacturer: "",
+          isActive: true
+        });
+
+        await newMedicine.save();
+        results.success.push({
+          name: trimmedName,
+          medicineId: medicineId
+        });
+
+      } catch (error: any) {
+        results.failed.push({
+          name: trimmedName,
+          error: error.message || 'Failed to create medicine'
+        });
+      }
+    }
+
+    const totalProcessed = results.success.length + results.failed.length + results.duplicates.length;
+    
+    res.status(200).json({
+      success: true,
+      message: `Bulk operation completed. ${results.success.length} medicines created, ${results.failed.length} failed, ${results.duplicates.length} duplicates found.`,
+      data: {
+        totalProcessed,
+        successCount: results.success.length,
+        failedCount: results.failed.length,
+        duplicateCount: results.duplicates.length,
+        results
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Error in createBulkMedicines:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
