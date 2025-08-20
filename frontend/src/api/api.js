@@ -150,6 +150,16 @@ export const addToStock = async (stockData) => {
   }
 };
 
+export const getMedicinesDropdown = async () => {
+  try {
+    const response = await axiosInstance.get('/medicines/dropdown');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching medicines dropdown:', error);
+    throw error;
+  }
+};
+
 
 export const getStocksData = async (page = 1, limit = 50, search = "") => {
   try {
@@ -390,3 +400,19 @@ export const getBatchActivityLogs = async (batchId) => {
     throw error;
   }
 }
+
+export const getMedicines = (page = 1, limit = 10) => {
+  return axiosInstance.get(`/medicines?page=${page}&limit=${limit}`);
+};
+
+export const addMedicine = (data) => {
+  return axiosInstance.post('/medicines', data);
+};
+
+export const updateMedicine = (id, data) => {
+  return axiosInstance.put(`/medicines/${id}`, data);
+};
+
+export const deleteMedicine = (id) => {
+  return axiosInstance.delete(`/medicines/${id}`);
+};

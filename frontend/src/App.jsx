@@ -34,6 +34,7 @@ import BatchByID from "./pages/inventory/BatchByID";
 import StockByID from "./pages/inventory/StockByID";
 import LowStockItems from "./pages/inventory/LowStockItems";
 import ExpireSoonItems from "./pages/inventory/ExpireSoonItems";
+import Medicines from "./pages/inventory/Medicines";
 
 // protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
@@ -613,6 +614,17 @@ function App() {
               <ProtectedRoute>
                 <RoleProtectedRoute allowedRoles={["pharmacist_inventory"]}>
                   <AllStocks />
+                </RoleProtectedRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/pharmacist_inventory/medicines"
+            element={
+              <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={["pharmacist_inventory"]}>
+                  <Medicines />
                 </RoleProtectedRoute>
               </ProtectedRoute>
             }

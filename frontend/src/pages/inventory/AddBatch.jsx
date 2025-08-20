@@ -22,12 +22,7 @@ import {
   Edit,
   Calendar,
 } from "lucide-react";
-import {
-  MEDICINES,
-  getMedicineById,
-  getMedicineByName,
-} from "../../constants/selectOptions";
-import { addToStock, addDraftBatch } from "../../api/api";
+import { addToStock, addDraftBatch, getMedicinesDropdown  } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
 import { useAddBatchStore } from "../../store/addBatchStore";
 import Modal from "../../components/UI/Modal";
@@ -111,17 +106,24 @@ const AddBatch = () => {
   const [success, setSuccess] = useState("");
   const [showMedicineDropdown, setShowMedicineDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [medicinesOptions, setMedicinesOptions] = useState([]);
+  const [loadingMedicines, setLoadingMedicines] = useState(true);
+
   const normalize = (s = "") => s.toLowerCase().replace(/\s+/g, " ").trim();
-  const filteredOptions = useMemo(() => {
-    const q = normalize(searchTerm);
-    if (!q) return MEDICINES;                    // empty → sab dikhao
-    const words = q.split(" ").filter(Boolean);  // token wise match
-    const list = MEDICINES.filter(m => {
-      const name = normalize(m.name);
-      return words.every(w => name.includes(w));
-    });
-    return list.length ? list : MEDICINES;       // fallback agar zero match
-  }, [searchTerm]);
+
+// Update the filteredOptions to use medicinesOptions instead of MEDICINES
+const filteredOptions = useMemo(() => {
+  const q = normalize(searchTerm);
+  if (!q) return medicinesOptions;                    // empty → sab dikhao
+  const words = q.split(" ").filter(Boolean);  // token wise match
+  const list = medicinesOptions.filter(m => {
+    const name = normalize(m.name);
+    return words.every(w => name.includes(w));
+  });
+  return list.length ? list : medicinesOptions;       // fallback agar zero match
+}, [searchTerm, medicinesOptions]);
+
+
   const [editingIndex, setEditingIndex] = useState(null);
   const [editValues, setEditValues] = useState({
     price: "",
@@ -199,6 +201,37 @@ const AddBatch = () => {
   }, [routeBatchDetails, navigate, initializeBatch]);
 
   const batchDetails = routeBatchDetails;
+
+
+  // Add this useEffect to fetch medicines on component mount
+useEffect(() => {
+  const fetchMedicines = async () => {
+    try {
+      setLoadingMedicines(true);
+      const response = await getMedicinesDropdown();
+      if (response.success) {
+        // Transform the API response to match your existing format
+        const formattedMedicines = [
+          // { id: 1, name: "MISCELLANEOUS" }, // Keep MISCELLANEOUS at the top
+          ...response.data.map(medicine => ({
+            id: medicine.medicineId,
+            name: medicine.name
+          }))
+        ];
+        setMedicinesOptions(formattedMedicines);
+      }
+    } catch (error) {
+      console.error('Error fetching medicines:', error);
+      setError('Failed to load medicines list');
+      // Fallback to empty array or you could use your selectOptions as fallback
+      setMedicinesOptions([{ id: 1, name: "MISCELLANEOUS" }]);
+    } finally {
+      setLoadingMedicines(false);
+    }
+  };
+
+  fetchMedicines();
+}, []);
 
 
 
@@ -348,17 +381,15 @@ const AddBatch = () => {
   };
 
   const addMedicineToList = () => {
-    // 
-    // 
-    if (
-      !currentMedicine.medicineId ||
-      !MEDICINES.some(
-        (m) => m.id === currentMedicine.medicineId && m.name === currentMedicine.medicineName
-      )
-    ) {
-      setError("Please select a medicine from the suggestions.");
-      return;
-    }
+  if (
+    !currentMedicine.medicineId ||
+    !medicinesOptions.some( // Changed from MEDICINES to medicinesOptions
+      (m) => m.id === currentMedicine.medicineId && m.name === currentMedicine.medicineName
+    )
+  ) {
+    setError("Please select a medicine from the suggestions.");
+    return;
+  }
 
     if (!isMedicineFormValid) {
       setError("Please fill all required fields with valid values");
@@ -771,58 +802,66 @@ const AddBatch = () => {
 
           <div className="grid grid-cols-1 gap-6 mb-6">
             {/* Medicine Name */}
-            <div className="relative" ref={dropdownRef}>
-              <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
-                Medicine Name *
-              </label>
 
-              <div className="relative">
-                <Pill className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme.textMuted}`} />
+<div className="relative" ref={dropdownRef}>
+  <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
+    Medicine Name *
+  </label>
 
-                {/* ✅ Ab value sirf searchTerm hai */}
-                <input
-                  type="text"
-                  name="medicineNameSearch"
-                  value={searchTerm}
-                  onChange={handleMedicineNameChange}
-                  onFocus={() => setShowMedicineDropdown(true)}
-                  onBlur={() => {
-                    // thora delay taake list click register ho jaye
-                    setTimeout(() => setShowMedicineDropdown(false), 120);
-                  }}
-                  className={`w-full pl-10 pr-10 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200`}
-                  placeholder="Search medicine..."
-                />
+  <div className="relative">
+    <Pill className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme.textMuted}`} />
 
-                <button
-                  type="button"
-                  onClick={() => setShowMedicineDropdown((s) => !s)}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`}
-                >
-                  <ChevronDown className="w-5 h-5" />
-                </button>
-              </div>
+    <input
+      type="text"
+      name="medicineNameSearch"
+      value={searchTerm}
+      onChange={handleMedicineNameChange}
+      onFocus={() => setShowMedicineDropdown(true)}
+      onBlur={() => {
+        setTimeout(() => setShowMedicineDropdown(false), 120);
+      }}
+      disabled={loadingMedicines} // Add loading state
+      className={`w-full pl-10 pr-10 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} transition duration-200 ${loadingMedicines ? 'opacity-50 cursor-not-allowed' : ''}`}
+      placeholder={loadingMedicines ? "Loading medicines..." : "Search medicine..."}
+    />
 
-              {showMedicineDropdown && (
-                <div
-                  className={`absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-md ${theme.card} shadow-lg ${theme.border} border`}
-                >
-                  <ul>
-                    {filteredOptions.slice(0, 10).map((medicine) => (
-                      <li
-                        key={medicine.id}
-                        // onMouseDown blur se pehle fire hota — click reliably capture hota
-                        onMouseDown={() => handleMedicineSelect(medicine)}
-                        className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary} ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS" ? "bg-yellow-50 border-l-4 border-yellow-400" : ""
-                          }`}
-                      >
-                        {medicine.name}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+    <button
+      type="button"
+      onClick={() => setShowMedicineDropdown((s) => !s)}
+      disabled={loadingMedicines}
+      className={`absolute right-3 top-1/2 -translate-y-1/2 ${theme.textMuted} ${loadingMedicines ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      {loadingMedicines ? (
+        <Loader className="w-5 h-5 animate-spin" />
+      ) : (
+        <ChevronDown className="w-5 h-5" />
+      )}
+    </button>
+  </div>
+
+  {showMedicineDropdown && !loadingMedicines && (
+    <div className={`absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-md ${theme.card} shadow-lg ${theme.border} border`}>
+      <ul>
+        {filteredOptions.length > 0 ? (
+          filteredOptions.slice(0, 10).map((medicine) => (
+            <li
+              key={medicine.id}
+              onMouseDown={() => handleMedicineSelect(medicine)}
+              className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary} ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS" ? "bg-yellow-50 border-l-4 border-yellow-400" : ""}`}
+            >
+              {medicine.name}
+            </li>
+          ))
+        ) : (
+          <li className={`px-4 py-2 ${theme.textMuted} italic`}>
+            No medicines found
+          </li>
+        )}
+      </ul>
+    </div>
+  )}
+</div>
+
 
             {/* Fields Row - Price, Quantity, and Expiry Date OR Miscellaneous Amount */}
             {isMiscellaneousSelected ? (

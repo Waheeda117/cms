@@ -13,6 +13,8 @@ import inventoryRoutes from "./routes/inventory.route.js";
 import uploadRouter from './routes/upload.route.js';
 import expiredItemsRoutes from "./routes/expiredItems.route.js";
 import activityLogRoutes from "./routes/activityLog.routes.js";
+import medicinesRoutes from "./routes/medicines.route.js";
+
 
 
 dotenv.config();
@@ -39,6 +41,8 @@ app.use("/api/patients", patientRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/expired-items", expiredItemsRoutes);
 app.use("/api/logs", activityLogRoutes);
+app.use("/api/medicines", medicinesRoutes);
+
 
 
 // Use upload router
