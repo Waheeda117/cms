@@ -9,6 +9,8 @@ import {
   AlertCircle,
   X,
   Check,
+  Upload,
+  FileText,
 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import {
@@ -16,6 +18,7 @@ import {
   addMedicine,
   updateMedicine,
   deleteMedicine,
+  addBulkMedicines,
 } from "../../api/api";
 import Pagination from "../../components/UI/Pagination.jsx";
 import Modal from "../../components/UI/Modal.jsx";
@@ -30,11 +33,20 @@ const Medicines = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [newMedicineName, setNewMedicineName] = useState("");
   const [editMedicineName, setEditMedicineName] = useState("");
   const [validationError, setValidationError] = useState("");
   const [apiError, setApiError] = useState("");
+
+  // Bulk upload states
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvData, setCsvData] = useState("");
+  const [bulkMedicines, setBulkMedicines] = useState([]);
+  const [bulkValidationErrors, setBulkValidationErrors] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResults, setBulkResults] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -105,6 +117,96 @@ const Medicines = () => {
     setEditMedicineName("");
     setValidationError("");
     setApiError("");
+  };
+
+  // Reset bulk modal states
+  const resetBulkModalStates = () => {
+    setCsvFile(null);
+    setCsvData("");
+    setBulkMedicines([]);
+    setBulkValidationErrors([]);
+    setBulkResults(null);
+    setApiError("");
+  };
+
+  // Handle CSV file upload
+  const handleCsvFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setApiError("Please select a CSV file");
+      return;
+    }
+
+    setCsvFile(file);
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const text = e.target.result;
+      setCsvData(text);
+      parseCsvData(text);
+    };
+    
+    reader.readAsText(file);
+  };
+
+  // Parse CSV data
+  const parseCsvData = (csvText) => {
+    try {
+      const lines = csvText.split('\n').filter(line => line.trim());
+      const medicines = [];
+      const errors = [];
+
+      lines.forEach((line, index) => {
+        const name = line.trim().replace(/[",]/g, ''); // Remove quotes and commas
+        
+        if (name) {
+          const validationError = validateMedicineName(name);
+          if (validationError) {
+            errors.push(`Line ${index + 1}: ${validationError}`);
+          } else {
+            medicines.push({ name: name.trim() });
+          }
+        }
+      });
+
+      setBulkMedicines(medicines);
+      setBulkValidationErrors(errors);
+      setApiError("");
+    } catch (error) {
+      setApiError("Failed to parse CSV file");
+    }
+  };
+
+  // Handle CSV data change in textarea
+  const handleCsvDataChange = (value) => {
+    setCsvData(value);
+    parseCsvData(value);
+  };
+
+  // Handle bulk medicine submission
+  const handleBulkSubmit = async () => {
+    if (bulkMedicines.length === 0) {
+      setApiError("No valid medicines to add");
+      return;
+    }
+
+    if (bulkValidationErrors.length > 0) {
+      setApiError("Please fix validation errors before submitting");
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      const response = await addBulkMedicines({ medicines: bulkMedicines });
+      setBulkResults(response.data.data);
+      fetchData(); // Refresh the list
+    } catch (err) {
+      setApiError(err.response?.data?.message || "Failed to add bulk medicines");
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   // Handle add medicine
@@ -224,7 +326,7 @@ const Medicines = () => {
         className={`${theme.cardOpacity} backdrop-filter backdrop-blur-lg rounded-xl ${theme.border} border`}
       >
         <div className="p-6">
-          {/* Header with Add Button */}
+          {/* Header with Add Buttons */}
           <div className="flex flex-col sm:flex-row gap-5 justify-between items-start mb-6">
             <div>
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-2`}>
@@ -234,15 +336,29 @@ const Medicines = () => {
                 View and manage all medicines
               </p>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsAddModalOpen(true)}
-              className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200`}
-            >
-              <Plus className="w-5 h-5" />
-              <span>Add Medicine</span>
-            </motion.button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setIsBulkModalOpen(true);
+                  resetBulkModalStates();
+                }}
+                className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200`}
+              >
+                <Upload className="w-5 h-5" />
+                <span>Add Bulk Medicines</span>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsAddModalOpen(true)}
+                className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200`}
+              >
+                <Plus className="w-5 h-5" />
+                <span>Add Medicine</span>
+              </motion.button>
+            </div>
           </div>
 
           {/* Search */}
@@ -340,13 +456,25 @@ const Medicines = () => {
                   : "Get started by adding your first medicine"}
               </p>
               {!searchTerm && (
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 mx-auto`}
-                >
-                  <Plus className="w-5 h-5" />
-                  <span>Add Medicine</span>
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => {
+                      setIsBulkModalOpen(true);
+                      resetBulkModalStates();
+                    }}
+                    className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 mx-auto`}
+                  >
+                    <Upload className="w-5 h-5" />
+                    <span>Add Bulk Medicines</span>
+                  </button>
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 mx-auto`}
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span>Add Medicine</span>
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -432,111 +560,337 @@ const Medicines = () => {
         </div>
       </Modal>
 
-      {/* Edit Medicine Modal */}
+      {/* Bulk Upload Modal */}
       <Modal
-        isOpen={isEditModalOpen}
+        isOpen={isBulkModalOpen}
         onClose={() => {
-          setIsEditModalOpen(false);
-          resetModalStates();
-          setSelectedMedicine(null);
+          setIsBulkModalOpen(false);
+          resetBulkModalStates();
         }}
-        title="Edit Medicine"
+        title="Add Bulk Medicines"
+        subtitle="Upload CSV file with medicine names"
       >
         <div className="p-6">
-          <div className="mb-4">
-            <label
-              className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
-            >
-              Medicine Name
-            </label>
-            <input
-              type="text"
-              value={editMedicineName || selectedMedicine?.name || ""}
-              onChange={(e) => {
-                setEditMedicineName(e.target.value);
-                setValidationError("");
-                setApiError("");
-              }}
-              className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
-              placeholder="Enter medicine name"
-            />
+          {!bulkResults ? (
+            <>
+              {/* File Upload Section */}
+              <div className="mb-6">
+                <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
+                  Upload CSV File *
+                </label>
+                <div className={`border-2 border-dashed ${theme.borderSecondary} rounded-lg p-6 text-center`}>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvFileUpload}
+                    className="hidden"
+                    id="csv-upload"
+                  />
+                  <label
+                    htmlFor="csv-upload"
+                    className={`cursor-pointer flex flex-col items-center space-y-2 ${theme.textPrimary}`}
+                  >
+                    <FileText className="w-12 h-12 text-purple-500" />
+                    <span className="text-sm font-medium">
+                      {csvFile ? csvFile.name : "Click to upload CSV file"}
+                    </span>
+                    <span className={`text-xs ${theme.textMuted}`}>
+                      CSV file should contain medicine names, one per line
+                    </span>
+                  </label>
+                </div>
+              </div>
 
-            <p className="text-green-500 text-xs mt-1">
-              * Only alphabets and digits are allowed, No special characters &
-              max length is 50 characters
-            </p>
+              {/* Preview Section */}
+              {csvData && (
+                <div className="mb-6">
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
+                    Preview & Edit Medicine Names
+                  </label>
+                  <textarea
+                    value={csvData}
+                    onChange={(e) => handleCsvDataChange(e.target.value)}
+                    rows={10}
+                    className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} font-mono text-sm`}
+                    placeholder="Medicine names will appear here..."
+                  />
+                  <p className="text-green-500 text-xs mt-1">
+                    * Only alphabets and digits are allowed, No special characters & max length is 50 characters per name
+                  </p>
+                </div>
+              )}
 
-            {validationError && (
-              <p className="text-red-500 text-xs mt-1">{validationError}</p>
-            )}
-            {apiError && (
-              <p className="text-red-500 text-xs mt-1">{apiError}</p>
-            )}
-          </div>
+              {/* Validation Errors */}
+              {bulkValidationErrors.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-red-500 font-medium mb-2">Validation Errors:</h4>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 max-h-32 overflow-y-auto">
+                    {bulkValidationErrors.map((error, index) => (
+                      <p key={index} className="text-red-600 dark:text-red-400 text-sm">
+                        {error}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                resetModalStates();
-                setSelectedMedicine(null);
-              }}
-              className={`px-4 py-2 ${theme.cardSecondary} ${theme.borderSecondary} border rounded-lg ${theme.textPrimary}`}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleEditMedicine}
-              disabled={!isMedicineNameValid(editMedicineName)}
-              className={`px-4 py-2 bg-gradient-to-r ${theme.buttonGradient} text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              Update Medicine
-            </button>
-          </div>
-        </div>
-      </Modal>
+              {/* Summary */}
+              {bulkMedicines.length > 0 && (
+                <div className="mb-6">
+                  <div className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4`}>
+                    <p className={`text-blue-700 dark:text-blue-300 text-sm`}>
+                      Ready to add {bulkMedicines.length} medicine(s)
+                      {bulkValidationErrors.length > 0 && (
+                        <span className="text-red-600 dark:text-red-400">
+                          {" "}({bulkValidationErrors.length} error(s) need to be fixed)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setSelectedMedicine(null);
-        }}
-        title="Confirm Deletion"
-      >
-        <div className="p-6">
-          <div className="mb-6">
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mx-auto mb-4">
-              <AlertCircle className="w-8 h-8" />
-            </div>
-            <p className={`text-center ${theme.textSecondary}`}>
-              Are you sure you want to delete the medicine "
-              {selectedMedicine?.name}"? This action cannot be undone.
-            </p>
-          </div>
+              {apiError && (
+                <div className="mb-6">
+                  <p className="text-red-500 text-sm">{apiError}</p>
+                </div>
+              )}
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              onClick={() => {
-                setIsDeleteModalOpen(false);
-                setSelectedMedicine(null);
-              }}
-              className={`px-4 py-2 ${theme.cardSecondary} ${theme.borderSecondary} border rounded-lg ${theme.textPrimary}`}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDeleteMedicine}
-              className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700"
-            >
-              Delete Medicine
-            </button>
-          </div>
-        </div>
-      </Modal>
-    </div>
-  );
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => {
+                    setIsBulkModalOpen(false);
+                    resetBulkModalStates();
+                  }}
+                  className={`px-4 py-2 ${theme.cardSecondary} ${theme.borderSecondary} border rounded-lg ${theme.textPrimary}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkSubmit}
+                  disabled={bulkMedicines.length === 0 || bulkValidationErrors.length > 0 || bulkLoading}
+className={`px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-purple-700 transition-all duration-200`}
+               >
+                 {bulkLoading ? (
+                   <div className="flex items-center space-x-2">
+                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                     <span>Processing...</span>
+                   </div>
+                 ) : (
+                   `Add ${bulkMedicines.length} Medicines`
+                 )}
+               </button>
+             </div>
+           </>
+         ) : (
+           /* Results Section */
+           <div className="space-y-6">
+             <div className="text-center">
+               <div className="w-16 h-16 mx-auto mb-4">
+                 {bulkResults.successCount > 0 ? (
+                   <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                     <Check className="w-8 h-8 text-green-500" />
+                   </div>
+                 ) : (
+                   <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                     <AlertCircle className="w-8 h-8 text-red-500" />
+                   </div>
+                 )}
+               </div>
+               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-2`}>
+                 Bulk Upload Complete
+               </h3>
+               <p className={`${theme.textMuted}`}>
+                 Processed {bulkResults.totalProcessed} medicine(s)
+               </p>
+             </div>
+
+             {/* Summary Cards */}
+             <div className="grid grid-cols-3 gap-4">
+               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
+                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                   {bulkResults.successCount}
+                 </div>
+                 <div className="text-sm text-green-700 dark:text-green-300">
+                   Success
+                 </div>
+               </div>
+               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-center">
+                 <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                   {bulkResults.duplicateCount}
+                 </div>
+                 <div className="text-sm text-yellow-700 dark:text-yellow-300">
+                   Duplicates
+                 </div>
+               </div>
+               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center">
+                 <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                   {bulkResults.failedCount}
+                 </div>
+                 <div className="text-sm text-red-700 dark:text-red-300">
+                   Failed
+                 </div>
+               </div>
+             </div>
+
+             {/* Detailed Results */}
+             {(bulkResults.results.duplicates.length > 0 || bulkResults.results.failed.length > 0) && (
+               <div className="space-y-4">
+                 {/* Duplicates */}
+                 {bulkResults.results.duplicates.length > 0 && (
+                   <div>
+                     <h4 className="font-medium text-yellow-600 dark:text-yellow-400 mb-2">
+                       Duplicate Medicines ({bulkResults.results.duplicates.length})
+                     </h4>
+                     <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 max-h-32 overflow-y-auto">
+                       {bulkResults.results.duplicates.map((item, index) => (
+                         <p key={index} className="text-yellow-700 dark:text-yellow-300 text-sm">
+                           {item.name} - {item.error}
+                         </p>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+
+                 {/* Failed */}
+                 {bulkResults.results.failed.length > 0 && (
+                   <div>
+                     <h4 className="font-medium text-red-600 dark:text-red-400 mb-2">
+                       Failed Medicines ({bulkResults.results.failed.length})
+                     </h4>
+                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 max-h-32 overflow-y-auto">
+                       {bulkResults.results.failed.map((item, index) => (
+                         <p key={index} className="text-red-700 dark:text-red-300 text-sm">
+                           {item.name} - {item.error}
+                         </p>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+               </div>
+             )}
+
+             <div className="flex justify-end space-x-3 pt-4">
+               <button
+                 onClick={() => {
+                   setIsBulkModalOpen(false);
+                   resetBulkModalStates();
+                 }}
+                 className={`px-4 py-2 bg-gradient-to-r ${theme.buttonGradient} text-white rounded-lg`}
+               >
+                 Close
+               </button>
+             </div>
+           </div>
+         )}
+       </div>
+     </Modal>
+
+     {/* Edit Medicine Modal */}
+     <Modal
+       isOpen={isEditModalOpen}
+       onClose={() => {
+         setIsEditModalOpen(false);
+         resetModalStates();
+         setSelectedMedicine(null);
+       }}
+       title="Edit Medicine"
+     >
+       <div className="p-6">
+         <div className="mb-4">
+           <label
+             className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
+           >
+             Medicine Name
+           </label>
+           <input
+             type="text"
+             value={editMedicineName || selectedMedicine?.name || ""}
+             onChange={(e) => {
+               setEditMedicineName(e.target.value);
+               setValidationError("");
+               setApiError("");
+             }}
+             className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
+             placeholder="Enter medicine name"
+           />
+
+           <p className="text-green-500 text-xs mt-1">
+             * Only alphabets and digits are allowed, No special characters &
+             max length is 50 characters
+           </p>
+
+           {validationError && (
+             <p className="text-red-500 text-xs mt-1">{validationError}</p>
+           )}
+           {apiError && (
+             <p className="text-red-500 text-xs mt-1">{apiError}</p>
+           )}
+         </div>
+
+         <div className="flex justify-end space-x-3 pt-4">
+           <button
+             onClick={() => {
+               setIsEditModalOpen(false);
+               resetModalStates();
+               setSelectedMedicine(null);
+             }}
+             className={`px-4 py-2 ${theme.cardSecondary} ${theme.borderSecondary} border rounded-lg ${theme.textPrimary}`}
+           >
+             Cancel
+           </button>
+           <button
+             onClick={handleEditMedicine}
+             disabled={!isMedicineNameValid(editMedicineName)}
+             className={`px-4 py-2 bg-gradient-to-r ${theme.buttonGradient} text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+           >
+             Update Medicine
+           </button>
+         </div>
+       </div>
+     </Modal>
+
+     {/* Delete Confirmation Modal */}
+     <Modal
+       isOpen={isDeleteModalOpen}
+       onClose={() => {
+         setIsDeleteModalOpen(false);
+         setSelectedMedicine(null);
+       }}
+       title="Confirm Deletion"
+     >
+       <div className="p-6">
+         <div className="mb-6">
+           <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mx-auto mb-4">
+             <AlertCircle className="w-8 h-8" />
+           </div>
+           <p className={`text-center ${theme.textSecondary}`}>
+             Are you sure you want to delete the medicine "
+             {selectedMedicine?.name}"? This action cannot be undone.
+           </p>
+         </div>
+
+         <div className="flex justify-end space-x-3 pt-4">
+           <button
+             onClick={() => {
+               setIsDeleteModalOpen(false);
+               setSelectedMedicine(null);
+             }}
+             className={`px-4 py-2 ${theme.cardSecondary} ${theme.borderSecondary} border rounded-lg ${theme.textPrimary}`}
+           >
+             Cancel
+           </button>
+           <button
+             onClick={handleDeleteMedicine}
+             className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700"
+           >
+             Delete Medicine
+           </button>
+         </div>
+       </div>
+     </Modal>
+   </div>
+ );
 };
 
 export default Medicines;

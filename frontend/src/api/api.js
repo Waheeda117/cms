@@ -416,3 +416,7 @@ export const updateMedicine = (id, data) => {
 export const deleteMedicine = (id) => {
   return axiosInstance.delete(`/medicines/${id}`);
 };
+
+export const addBulkMedicines = (data) => {
+  return axiosInstance.post('/medicines/bulk', data);
+};
