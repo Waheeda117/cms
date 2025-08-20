@@ -68,6 +68,9 @@ const UpdateBatch = () => {
   const [finalizeLoading, setFinalizeLoading] = useState(false); // New loading state for finalize
   const [batchIsDraft, setBatchIsDraft] = useState(false); // Track draft status
 
+  const [editingMiscellaneous, setEditingMiscellaneous] = useState(false);
+const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
+
   // Edit mode state - Updated to include expiry date
   const [editingIndex, setEditingIndex] = useState(null);
   const [editValues, setEditValues] = useState({
@@ -320,7 +323,86 @@ const UpdateBatch = () => {
   const hasPriceMismatch = priceDifference > 0.001;
   const isPriceExceeded =
     totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0);
-  const canUpdateBatch = !hasPriceMismatch && medicines && medicines.length > 0;
+
+  const canUpdateBatch = !hasPriceMismatch && medicines && medicines.length > 0 && editingIndex === null && !editingMiscellaneous;
+
+
+  const handleEditMiscellaneous = () => {
+  setEditingMiscellaneous(true);
+  setEditMiscellaneousValue(miscellaneousAmount.toString());
+};
+
+const handleSaveMiscellaneousEdit = () => {
+  const newAmount = parseFloat(editMiscellaneousValue);
+  
+  // Validation
+  if (isNaN(newAmount) || newAmount < 0) {
+    setError("Please enter a valid miscellaneous amount");
+    return;
+  }
+  
+  // Check if editing would exceed the total price
+  const newGrandTotal = totalMedicinePrice + newAmount;
+  if (newGrandTotal > parseFloat(batchDetails?.overallPrice || 0)) {
+    setError("Editing miscellaneous amount would exceed the total batch price.");
+    return;
+  }
+  
+  setMiscellaneousAmount(newAmount);
+  setEditingMiscellaneous(false);
+  setEditMiscellaneousValue("");
+  setError("");
+};
+
+const handleCancelMiscellaneousEdit = () => {
+  setEditingMiscellaneous(false);
+  setEditMiscellaneousValue("");
+};
+
+
+const handleDecimalInput = (e, fieldName, isEdit = false) => {
+  let value = e.target.value;
+
+  // Allow empty input
+  if (value === "") {
+    if (isEdit && fieldName === "miscellaneous") {
+      setEditMiscellaneousValue(value);
+    }
+    return;
+  }
+
+  // Remove any non-numeric characters except dot (.)
+  value = value.replace(/[^0-9.]/g, "");
+
+  const dotIndex = value.indexOf(".");
+  if (dotIndex !== -1) {
+    value =
+      value.substring(0, dotIndex + 1) +
+      value.substring(dotIndex + 1).replace(/\./g, "");
+  }
+
+  // Ensure only one dot (.)
+  const parts = value.split(".");
+  if (parts.length > 2) {
+    value = parts[0] + "." + parts.slice(1).join("");
+  }
+
+  // Limit to 9 digits before decimal and 2 after
+  if (parts[0] && parts[0].length > 9) {
+    parts[0] = parts[0].substring(0, 9);
+  }
+  if (parts[1] && parts[1].length > 2) {
+    parts[1] = parts[1].substring(0, 2);
+  }
+
+  value = parts.join(".");
+
+  if (isEdit && fieldName === "miscellaneous") {
+    setEditMiscellaneousValue(value);
+  }
+};
+
+
 
   useEffect(() => {
     if (currentMedicine.medicineId === 1) {
@@ -1167,32 +1249,86 @@ const handleMedicineSelect = (medicine) => {
             </div>
           </div>
 
-          {miscellaneousAmount > 0 && (
-            <div
-              className={`${theme.card} rounded-lg border ${theme.borderSecondary} mb-8 p-4`}
-            >
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <DollarSign className="w-5 h-5 text-yellow-500 mr-2" />
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>
-                      Miscellaneous Amount
-                    </p>
-                    <p className={`text-lg font-bold ${theme.textPrimary}`}>
-                      PKR {miscellaneousAmount.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={removeMiscellaneous}
-                  className={`p-1.5 rounded-lg ${theme.cardSecondary} ${theme.textPrimary} hover:bg-red-500 hover:text-white transition-colors`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+
+{miscellaneousAmount > 0 && (
+  <div
+    className={`${theme.card} rounded-lg border ${theme.borderSecondary} mb-8 p-4`}
+  >
+    <div className="flex justify-between items-center">
+      <div className="flex items-center">
+        <DollarSign className="w-5 h-5 text-yellow-500 mr-2" />
+        <div>
+          <p className={`text-sm ${theme.textMuted}`}>
+            Miscellaneous Amount
+          </p>
+          {editingMiscellaneous ? (
+            <div className="flex items-center space-x-2 mt-1">
+              <input
+                type="text"
+                value={editMiscellaneousValue}
+                onChange={(e) => handleDecimalInput(e, "miscellaneous", true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveMiscellaneousEdit();
+                  } else if (e.key === 'Escape') {
+                    handleCancelMiscellaneousEdit();
+                  }
+                }}
+                step="0.01"
+                min="0"
+                max={remainingAmount + miscellaneousAmount}
+                className={`w-32 px-2 py-1 ${theme.input} rounded ${theme.borderSecondary} border ${theme.focus} focus:ring-1`}
+                placeholder="Enter amount"
+                autoFocus
+              />
             </div>
+          ) : (
+            <p className={`text-lg font-bold ${theme.textPrimary}`}>
+              PKR {miscellaneousAmount.toFixed(2)}
+            </p>
           )}
+        </div>
+      </div>
+      <div className="flex items-center space-x-2">
+        {editingMiscellaneous ? (
+          <>
+            <button
+              type="button"
+              onClick={handleSaveMiscellaneousEdit}
+              className={`p-1.5 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors`}
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelMiscellaneousEdit}
+              className={`p-1.5 rounded-lg bg-gray-500 text-white hover:bg-gray-600 transition-colors`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleEditMiscellaneous}
+              className={`p-1.5 rounded-lg ${theme.cardSecondary} hover:bg-blue-500 hover:text-white transition-colors`}
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={removeMiscellaneous}
+              className={`p-1.5 rounded-lg ${theme.cardSecondary} ${theme.textPrimary} hover:bg-red-500 hover:text-white transition-colors`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div
@@ -1279,54 +1415,54 @@ const handleMedicineSelect = (medicine) => {
           {/* Submit Button Section - Updated */}
           <div className="flex justify-end gap-4">
             {/* Cancel Button */}
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={updateLoading}
-              className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <span>Cancel</span>
-            </button>
+  <button
+    type="button"
+    onClick={handleCancel}
+    disabled={updateLoading}
+    className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+  >
+    <span>Cancel</span>
+  </button>
 
-            {/* Save Draft Button (only for drafts) */}
-            {batchIsDraft && (
-              <button
-                type="button"
-                onClick={(e) => handleSubmit(e, false)}
-                disabled={updateLoading || !canUpdateBatch || editingIndex !== null}
-                className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {updateLoading ? (
-                  <>
-                    <Loader className="w-5 h-5 animate-spin" />
-                    <span>Saving Draft...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Save Draft</span>
-                  </>
-                )}
-              </button>
-            )}
+  {/* Save Draft Button (only for drafts) */}
+  {batchIsDraft && (
+    <button
+      type="button"
+      onClick={(e) => handleSubmit(e, false)}
+      disabled={updateLoading || !canUpdateBatch || editingMiscellaneous}
+      className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+    >
+      {updateLoading ? (
+        <>
+          <Loader className="w-5 h-5 animate-spin" />
+          <span>Saving Draft...</span>
+        </>
+      ) : (
+        <>
+          <span>Save Draft</span>
+        </>
+      )}
+    </button>
+  )}
 
-            {/* Save Button (finalizes draft or updates finalized batch) */}
-            <button
-              type="button"
-              onClick={(e) => handleSubmit(e, true)}
-              disabled={updateLoading || !canUpdateBatch || editingIndex !== null}
-              className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {updateLoading ? (
-                <>
-                  <Loader className="w-5 h-5 animate-spin" />
-                  <span>{batchIsDraft ? "Saving..." : "Saving..."}</span>
-                </>
-              ) : (
-                <>
-                  <span>{batchIsDraft ? "Save" : "Save"}</span>
-                </>
-              )}
-            </button>
+  {/* Save Button (finalizes draft or updates finalized batch) */}
+  <button
+    type="button"
+    onClick={(e) => handleSubmit(e, true)}
+    disabled={updateLoading || !canUpdateBatch || editingMiscellaneous}
+    className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+  >
+    {updateLoading ? (
+      <>
+        <Loader className="w-5 h-5 animate-spin" />
+        <span>{batchIsDraft ? "Saving..." : "Saving..."}</span>
+      </>
+    ) : (
+      <>
+        <span>{batchIsDraft ? "Save" : "Save"}</span>
+      </>
+    )}
+  </button>
           </div>
         </form>
       </div>
