@@ -58,7 +58,7 @@ const Sidebar = ({ isOpen, isMiniMode, onToggleMiniMode, onClose, isMobile }) =>
           { icon: Home, label: 'Dashboard', path: '', color: 'text-blue-500' },
 
       // { icon: Box, label: 'Inventory', path: '/inventory-management', color: 'text-teal-600' },
-      // { icon: Pill, label: 'Stocks', path: '/all-stocks', color: 'text-purple-600' },
+      { icon: Pill, label: 'Medicines', path: '/medicines', color: 'text-purple-600' },
       // { icon: FileText, label: 'Reports', path: '/reports', color: 'text-orange-500' },
       { icon: Settings, label: 'Settings', path: '/settings', color: 'text-gray-500' },
     ],

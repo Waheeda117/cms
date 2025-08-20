@@ -27,7 +27,7 @@ import {
   getMedicineById,
   getMedicineByName,
 } from "../../constants/selectOptions";
-import { getBatchById, updateBatchById, finalizeBatch } from "../../api/api";
+import { getBatchById, updateBatchById, finalizeBatch, getMedicinesDropdown  } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
 import { useBatchUpdateStore } from "../../store/batchUpdateStore";
 import Modal from "../../components/UI/Modal";
@@ -84,6 +84,8 @@ const UpdateBatch = () => {
 
   const persistentData = getBatchData(batchId);
   const [medicines, setMedicines] = useState(persistentData?.medicines || []);
+  const [medicinesDropdown, setMedicinesDropdown] = useState([]); // Add this new state
+  const [medicinesLoading, setMedicinesLoading] = useState(false); // Add loading state
   const [miscellaneousAmount, setMiscellaneousAmount] = useState(
     persistentData?.miscellaneousAmount || 0
   );
@@ -133,6 +135,18 @@ const UpdateBatch = () => {
     return "";
   };
 
+
+  const getMedicineByIdFromDropdown = (medicineId) => {
+    return medicinesDropdown.find(medicine => medicine.medicineId === medicineId);
+  };
+
+  const getMedicineByNameFromDropdown = (medicineName) => {
+    return medicinesDropdown.find(medicine => 
+      medicine.name.toLowerCase() === medicineName.toLowerCase()
+    );
+  };
+
+
   // Auto-cleanup old data on component mount
   useEffect(() => {
     cleanupOldData();
@@ -152,19 +166,24 @@ const UpdateBatch = () => {
     }
   }, [miscellaneousAmount, batchId, updateMiscellaneousAmount]);
 
-  // Update persistent storage whenever current medicine form changes
-  // useEffect(() => {
-  //   if (
-  //     batchId &&
-  //     (currentMedicine.medicineId ||
-  //       currentMedicine.medicineName ||
-  //       currentMedicine.quantity ||
-  //       currentMedicine.price ||
-  //       currentMedicine.expiryDate)
-  //   ) {
-  //     updateCurrentMedicine(batchId, currentMedicine);
-  //   }
-  // }, [currentMedicine, batchId, updateCurrentMedicine]);
+
+  // Add this useEffect after the existing useEffect hooks
+  useEffect(() => {
+    const fetchMedicinesDropdown = async () => {
+      try {
+        setMedicinesLoading(true);
+        const response = await getMedicinesDropdown();
+        setMedicinesDropdown(response.data || []);
+      } catch (error) {
+        console.error('Error fetching medicines dropdown:', error);
+        setError('Failed to load medicines list. Please refresh the page.');
+      } finally {
+        setMedicinesLoading(false);
+      }
+    };
+
+  fetchMedicinesDropdown();
+}, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -201,20 +220,20 @@ const UpdateBatch = () => {
           !persistentBatchData.medicines ||
           persistentBatchData.medicines.length === 0
         ) {
-          const existingMedicines = Array.isArray(batch.data.medicines)
-            ? batch.data.medicines.map((medicine) => {
-              if (!medicine.medicineId) {
-                const foundMedicine = getMedicineByName(
-                  medicine.medicineName
-                );
-                return {
-                  ...medicine,
-                  medicineId: foundMedicine ? foundMedicine.id : null,
-                };
-              }
-              return medicine;
-            })
-            : [];
+            const existingMedicines = Array.isArray(batch.data.medicines)
+              ? batch.data.medicines.map((medicine) => {
+                if (!medicine.medicineId) {
+                  const foundMedicine = getMedicineByNameFromDropdown(
+                    medicine.medicineName
+                  );
+                  return {
+                    ...medicine,
+                    medicineId: foundMedicine ? foundMedicine.medicineId : null,
+                  };
+                }
+                return medicine;
+              })
+              : [];
 
           setMedicines(existingMedicines);
           setMiscellaneousAmount(batch.data.miscellaneousAmount || 0);
@@ -340,25 +359,25 @@ const UpdateBatch = () => {
     if (error) setError("");
   };
 
-  const handleMedicineSelect = (medicine) => {
-    // Set default expiry date to 2 years from now when medicine is selected
-    const defaultExpiryDate = new Date();
-    defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 2);
-    const defaultExpiryDateString = defaultExpiryDate
-      .toISOString()
-      .split("T")[0];
+const handleMedicineSelect = (medicine) => {
+  // Set default expiry date to 2 years from now when medicine is selected
+  const defaultExpiryDate = new Date();
+  defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 2);
+  const defaultExpiryDateString = defaultExpiryDate
+    .toISOString()
+    .split("T")[0];
 
-    setCurrentMedicine((prev) => ({
-      ...prev,
-      medicineId: medicine.id,
-      medicineName: medicine.name,
-      quantity: medicine.id === 1 ? "" : prev.quantity,
-      price: medicine.id === 1 ? remainingAmount.toFixed(2) : prev.price,
-      expiryDate: medicine.id === 1 ? "" : "", // Set default expiry for non-miscellaneous
-    }));
-    setShowMedicineDropdown(false);
-    setSearchTerm("");
-  };
+  setCurrentMedicine((prev) => ({
+    ...prev,
+    medicineId: medicine.medicineId, // Use medicineId from API
+    medicineName: medicine.name,
+    quantity: medicine.medicineId === 1 ? "" : prev.quantity,
+    price: medicine.medicineId === 1 ? remainingAmount.toFixed(2) : prev.price,
+    expiryDate: medicine.medicineId === 1 ? "" : "", // Set default expiry for non-miscellaneous
+  }));
+  setShowMedicineDropdown(false);
+  setSearchTerm("");
+};
 
   const checkPriceExceeded = (price, quantity) => {
     const medicineTotal = parseFloat(price) * parseInt(quantity);
@@ -383,18 +402,18 @@ const UpdateBatch = () => {
       return;
     }
 
-    // Skip duplicate check for miscellaneous
-    if (currentMedicine.medicineId !== 1) {
-      const existingMedicine = medicines.find(
-        (med) => med.medicineId === currentMedicine.medicineId
-      );
-      if (existingMedicine) {
-        setError(
-          "This medicine is already added to the list. Please select a different medicine or update the existing entry."
+      // Skip duplicate check for miscellaneous
+      if (currentMedicine.medicineId !== 1) {
+        const existingMedicine = medicines.find(
+          (med) => med.medicineId === currentMedicine.medicineId
         );
-        return;
+        if (existingMedicine) {
+          setError(
+            "This medicine is already added to the list. Please select a different medicine or update the existing entry."
+          );
+          return;
+        }
       }
-    }
 
     if (
       currentMedicine.medicineId !== 1 &&
@@ -774,33 +793,49 @@ const UpdateBatch = () => {
                 </button>
               </div>
 
-              {showMedicineDropdown && (
-                <div
-                  className={`absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-md ${theme.card} shadow-lg ${theme.border} border`}
-                >
-                  <ul>
-                    {MEDICINES.filter((medicine) =>
-                      medicine.name
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase())
-                    )
-                      .slice(0, 10)
-                      .map((medicine) => (
-                        <li
-                          key={medicine.id}
-                          onClick={() => handleMedicineSelect(medicine)}
-                          className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary
-                            } ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS"
-                              ? "bg-yellow-50 border-l-4 border-yellow-400"
-                              : ""
-                            }`}
-                        >
-                          {medicine.name}
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
+                {showMedicineDropdown && (
+                  <div
+                    className={`absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-md ${theme.card} shadow-lg ${theme.border} border`}
+                  >
+                    {medicinesLoading ? (
+                      <div className="px-4 py-2 text-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto"></div>
+                        <span className={`text-sm ${theme.textMuted} mt-2`}>Loading medicines...</span>
+                      </div>
+                    ) : (
+                      <ul>
+                        {medicinesDropdown.filter((medicine) =>
+                          medicine.name
+                            .toLowerCase()
+                            .includes(searchTerm.toLowerCase())
+                        )
+                          .slice(0, 10)
+                          .map((medicine) => (
+                            <li
+                              key={medicine._id}
+                              onClick={() => handleMedicineSelect(medicine)}
+                              className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary
+                                } ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS"
+                                  ? "bg-yellow-50 border-l-4 border-yellow-400"
+                                  : ""
+                                }`}
+                            >
+                              {medicine.name}
+                            </li>
+                          ))}
+                        {medicinesDropdown.filter((medicine) =>
+                          medicine.name
+                            .toLowerCase()
+                            .includes(searchTerm.toLowerCase())
+                        ).length === 0 && (
+                          <li className={`px-4 py-2 ${theme.textMuted}`}>
+                            No medicines found
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                )}
             </div>
 
             {/* Right side - Price, Quantity, and Expiry Date fields */}
