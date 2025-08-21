@@ -181,7 +181,8 @@ export const addDraftBatch = async (req: AuthenticatedRequest, res: Response): P
         } = req.body;
 
         // Same validation as addToStock but save as draft
-        if (!batchNumber || !billID || !medicines || !Array.isArray(medicines) || medicines.length === 0 || !overallPrice) {
+        // if (!batchNumber || !billID || !medicines || !Array.isArray(medicines) || medicines.length === 0 || !overallPrice) {
+        if (!batchNumber || !billID || !medicines || !Array.isArray(medicines) || !overallPrice) {
             res.status(400).json({
                 success: false,
                 message: "All fields are required. Medicines must be a non-empty array."
@@ -238,13 +239,13 @@ export const addDraftBatch = async (req: AuthenticatedRequest, res: Response): P
         const totalWithMiscellaneous = totalMedicinesPrice + miscellaneousAmount;
         const priceDifference = Math.abs(totalWithMiscellaneous - overallPrice);
         
-        if (priceDifference > 0.01) {
-            res.status(400).json({
-                success: false,
-                message: `Total medicines price plus miscellaneous amount must equal overall price`
-            });
-            return;
-        }
+        // if (priceDifference > 0.01) {
+        //     res.status(400).json({
+        //         success: false,
+        //         message: `Total medicines price plus miscellaneous amount must equal overall price`
+        //     });
+        //     return;
+        // }
 
         // Check if batch already exists
         const existingBatch = await Inventory.findOne({ batchNumber });
@@ -1425,6 +1426,17 @@ const getSummaryStats = async () => {
         }
     ];
 
+    // Pipeline for miscellaneous amount aggregation
+    const miscellaneousPipeline = [
+        { $match: { isDraft: false } },
+        {
+            $group: {
+                _id: null,
+                totalMiscellaneous: { $sum: "$miscellaneousAmount" }
+            }
+        }
+    ];
+
     // Pipeline for low stock count (grouped by medicine name)
     const lowStockPipeline = [
         { $match: { isDraft: false } },
@@ -1446,20 +1458,27 @@ const getSummaryStats = async () => {
         }
     ];
 
-    // Execute both pipelines
-    const [generalResults, lowStockResults] = await Promise.all([
+    // Execute all pipelines
+    const [generalResults, miscellaneousResults, lowStockResults] = await Promise.all([
         Inventory.aggregate(generalStatsPipeline),
+        Inventory.aggregate(miscellaneousPipeline),
         Inventory.aggregate(lowStockPipeline)
     ]);
     
     const totalItems = generalResults.length;
     const nearExpiryCount = [...new Set(
-    generalResults.filter(item => item.isNearExpiry).map(item => item.medicineName)
-)].length;
+        generalResults.filter(item => item.isNearExpiry).map(item => item.medicineName)
+    )].length;
     const alreadyExpiredCount = [...new Set(
-    generalResults.filter(item => item.isAlreadyExpired).map(item => item.medicineName)
-)].length;
+        generalResults.filter(item => item.isAlreadyExpired).map(item => item.medicineName)
+    )].length;
     const totalStockValue = generalResults.reduce((sum, item) => sum + item.totalValue, 0);
+    
+    // Get miscellaneous amount
+    const totalMiscellaneousAmount = miscellaneousResults.length > 0 ? miscellaneousResults[0].totalMiscellaneous : 0;
+    
+    // Calculate total stock value with miscellaneous
+    const totalStockValueWithMiscellaneous = totalStockValue + totalMiscellaneousAmount;
     
     // Get the correct low stock count
     const lowStockCount = lowStockResults.length > 0 ? lowStockResults[0].lowStockCount : 0;
@@ -1472,12 +1491,30 @@ const getSummaryStats = async () => {
         formattedStockValue = totalStockValue.toString();
     }
 
+    // Format stock value with miscellaneous in thousands (K)
+    let formattedStockValueWithMiscellaneous: string;
+    if (totalStockValueWithMiscellaneous >= 1000) {
+        formattedStockValueWithMiscellaneous = (totalStockValueWithMiscellaneous / 1000).toFixed(1) + "K";
+    } else {
+        formattedStockValueWithMiscellaneous = totalStockValueWithMiscellaneous.toString();
+    }
+
+    // Format miscellaneous amount in thousands (K)
+    let formattedMiscellaneousAmount: string;
+    if (totalMiscellaneousAmount >= 1000) {
+        formattedMiscellaneousAmount = (totalMiscellaneousAmount / 1000).toFixed(1) + "K";
+    } else {
+        formattedMiscellaneousAmount = totalMiscellaneousAmount.toString();
+    }
+
     return {
         totalItems,
         lowStock: lowStockCount,
         nearExpiry: nearExpiryCount,
         alreadyExpired: alreadyExpiredCount,
-        stockValue: formattedStockValue
+        stockValue: formattedStockValue,
+        stockValueWithMiscellaneous: formattedStockValueWithMiscellaneous,
+        totalMiscellaneousAmount: formattedMiscellaneousAmount
     };
 };
 

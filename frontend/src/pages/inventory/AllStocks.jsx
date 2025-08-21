@@ -141,22 +141,22 @@ const AllStocks = () => {
       color: "text-orange-500",
       bgColor: "bg-orange-500 bg-opacity-20 border-orange-500",
     },
+    // {
+    //   title: "Near expire stock",
+    //   value: stockData?.data?.summary?.expiringWithin10Days,
+    //   icon: Layers,
+    //   color: "text-purple-500",
+    //   bgColor: "bg-purple-500 bg-opacity-20 border-purple-500",
+    // },
+    // {
+    //   title: "Expired stock",
+    //   value: stockData?.data?.summary?.expiredMedicines,
+    //   icon: Layers,
+    //   color: "text-purple-500",
+    //   bgColor: "bg-purple-500 bg-opacity-20 border-purple-500",
+    // },
     {
-      title: "Near expire stock",
-      value: stockData?.data?.summary?.expiringWithin10Days,
-      icon: Layers,
-      color: "text-purple-500",
-      bgColor: "bg-purple-500 bg-opacity-20 border-purple-500",
-    },
-    {
-      title: "Expired stock",
-      value: stockData?.data?.summary?.expiredMedicines,
-      icon: Layers,
-      color: "text-purple-500",
-      bgColor: "bg-purple-500 bg-opacity-20 border-purple-500",
-    },
-    {
-      title: "Price",
+      title: "Total Price",
       value: stockData?.data?.summary?.totalInventoryValue
         ? `Rs.${stockData.data.summary.totalInventoryValue.toFixed(0)}`
         : "Rs. 0",
@@ -214,7 +214,7 @@ const AllStocks = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
       >
         {summaryCards.map((card, index) => (
           <div

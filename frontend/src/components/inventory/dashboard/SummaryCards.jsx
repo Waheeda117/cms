@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Package, 
   Gauge, 
   CalendarX, 
-  BarChart2 
+  BarChart2,
+  AlertCircle
 } from 'lucide-react';
 
 const SummaryCards = ({ theme, data }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  // Check if miscellaneous amount is greater than 0
+  const hasMiscellaneous = data?.totalMiscellaneousAmount && 
+    parseFloat(data.totalMiscellaneousAmount.replace('K', '')) > 0;
+
   const summaryCards = [
     // {
     //   title: "Total Items",
@@ -39,10 +46,12 @@ const SummaryCards = ({ theme, data }) => {
     },
     {
       title: "Stock Value",
-      value: data?.stockValue || "0M",
+      value: data?.stockValueWithMiscellaneous || "0",
       icon: BarChart2,
       color: "text-emerald-500",
       bgColor: "bg-emerald-500 bg-opacity-20 border-emerald-500",
+      hasMiscellaneous: hasMiscellaneous,
+      miscellaneousAmount: data?.totalMiscellaneousAmount || "0"
     },
   ];
 
@@ -57,11 +66,35 @@ const SummaryCards = ({ theme, data }) => {
         <motion.div
           key={index}
           whileHover={{ y: -5 }}
-          className={`p-6 ${theme.cardOpacity} backdrop-filter backdrop-blur-lg rounded-xl ${theme.border} border`}
+          className={`p-6 ${theme.cardOpacity} backdrop-filter backdrop-blur-lg rounded-xl ${theme.border} border relative`}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className={`text-sm font-medium ${theme.textMuted}`}>{card.title}</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className={`text-sm font-medium ${theme.textMuted}`}>{card.title}</p>
+                {card.hasMiscellaneous && (
+                  <div 
+                    className="relative"
+                    onMouseEnter={() => setShowTooltip(index)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                  >
+                    <AlertCircle className="w-4 h-4 text-amber-500" />
+                    {showTooltip === index && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 ${theme.cardOpacity} backdrop-filter backdrop-blur-lg rounded-lg ${theme.border} border shadow-lg z-10 whitespace-nowrap`}
+                      >
+                        <p className={`text-xs ${theme.textPrimary} `}>
+                          Includes {card.miscellaneousAmount} miscellaneous amount
+                        </p>
+                        <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 ${theme.cardOpacity} border-r ${theme.border} border-b rotate-45`}></div>
+                      </motion.div>
+                    )}
+                  </div>
+                )}
+              </div>
               <p className={`text-3xl font-bold ${theme.textPrimary} mt-2`}>{card.value}</p>
             </div>
             <div className={`p-3 rounded-full ${card.bgColor} border`}>
