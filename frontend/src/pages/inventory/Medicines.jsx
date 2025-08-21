@@ -418,20 +418,20 @@ const Medicines = () => {
   };
 
   // Open edit modal with pre-populated data
-const openEditModal = (medicine) => {
-  setSelectedMedicine(medicine);
-  setEditForm({
-    name: medicine.name || "",
-    strength: medicine.strength || "",
-    category: medicine.category || "",
-    description: medicine.description || "",
-    manufacturer: medicine.manufacturer || ""
-  });
-  // Don't call resetModalStates() here as it will clear the form
-  setValidationErrors({});
-  setApiError("");
-  setIsEditModalOpen(true);
-};
+  const openEditModal = (medicine) => {
+    setSelectedMedicine(medicine);
+    setEditForm({
+      name: medicine.name || "",
+      strength: medicine.strength || "",
+      category: medicine.category || "",
+      description: medicine.description || "",
+      manufacturer: medicine.manufacturer || "",
+    });
+    // Don't call resetModalStates() here as it will clear the form
+    setValidationErrors({});
+    setApiError("");
+    setIsEditModalOpen(true);
+  };
 
   // Open delete confirmation modal (unchanged)
   const openDeleteModal = (medicine) => {
@@ -720,18 +720,18 @@ const openEditModal = (medicine) => {
       {/* Add Medicine Modal */}
       <Modal
         isOpen={isAddModalOpen}
-onClose={() => {
-  setIsAddModalOpen(false);
-  setAddForm({
-    name: "",
-    strength: "",
-    category: "",
-    description: "",
-    manufacturer: ""
-  });
-  setValidationErrors({});
-  setApiError("");
-}}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setAddForm({
+            name: "",
+            strength: "",
+            category: "",
+            description: "",
+            manufacturer: "",
+          });
+          setValidationErrors({});
+          setApiError("");
+        }}
         title="Add New Medicine"
       >
         <div className="p-6 space-y-4">
@@ -1156,19 +1156,19 @@ onClose={() => {
       {/* Edit Medicine Modal */}
       <Modal
         isOpen={isEditModalOpen}
-onClose={() => {
-  setIsEditModalOpen(false);
-  setEditForm({
-    name: "",
-    strength: "",
-    category: "",
-    description: "",
-    manufacturer: ""
-  });
-  setValidationErrors({});
-  setApiError("");
-  setSelectedMedicine(null);
-}}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditForm({
+            name: "",
+            strength: "",
+            category: "",
+            description: "",
+            manufacturer: "",
+          });
+          setValidationErrors({});
+          setApiError("");
+          setSelectedMedicine(null);
+        }}
         title="Edit Medicine"
       >
         <div className="p-6 space-y-4">
