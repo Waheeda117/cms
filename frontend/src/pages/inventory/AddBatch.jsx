@@ -942,7 +942,7 @@ const handleDecimalInput = (e, fieldName, isEdit = false) => {
                   <label
                     className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
                   >
-                    Price * <span className="text-xs">(max 9 digits)</span>
+                    Price *
                   </label>
                   <div className="relative">
                     <Banknote
@@ -966,7 +966,7 @@ const handleDecimalInput = (e, fieldName, isEdit = false) => {
                   <label
                     className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
                   >
-                    Quantity * <span className="text-xs">(max 5 digits)</span>
+                    Quantity *
                   </label>
                   <div className="relative">
                     <Hash
