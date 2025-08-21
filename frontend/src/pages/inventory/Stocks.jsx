@@ -134,6 +134,7 @@ const Stocks = () => {
 
     let batches = [...allStockData.data.batches];
 
+    batches = batches.filter(batch => batch.overallPrice !== 0);
 
         // Apply tab filter
     if (activeTab === 'drafts') {

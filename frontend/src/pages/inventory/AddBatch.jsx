@@ -346,6 +346,7 @@ useEffect(() => {
 
   const hasPriceMismatch = priceDifference > 0.001; // sirf warning ke liye
   const canAddBatch = medicines.length > 0 && !isPriceExceeded && !hasPriceMismatch && !editingMiscellaneous;
+  const canDraftBatch = !isPriceExceeded && !editingMiscellaneous;
 
 
 const handleEditMiscellaneous = () => {
@@ -1427,7 +1428,7 @@ const handleDecimalInput = (e, fieldName, isEdit = false) => {
 <button
   type="button"
   onClick={handleSaveDraft}
-  disabled={draftLoading || !canAddBatch || editingIndex !== null || editingMiscellaneous}
+  disabled={draftLoading || !canDraftBatch || editingIndex !== null || editingMiscellaneous}
   className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
 >
   {draftLoading ? (
