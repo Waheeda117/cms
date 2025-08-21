@@ -7,10 +7,7 @@ import {
   Trash2,
   Pill,
   AlertCircle,
-  X,
-  Check,
   Upload,
-  FileText,
 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import {
@@ -18,10 +15,11 @@ import {
   addMedicine,
   updateMedicine,
   deleteMedicine,
-  addBulkMedicines,
 } from "../../api/api";
 import Pagination from "../../components/UI/Pagination.jsx";
 import Modal from "../../components/UI/Modal.jsx";
+import AddBulkMedicine from "../../components/inventory/AddBulkMedicine.jsx";
+import AddBulkMedicineResults from "../../components/inventory/AddBulkMedicineResults.jsx";
 import { useAuthStore } from "../../store/authStore";
 
 const Medicines = () => {
@@ -35,6 +33,8 @@ const Medicines = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [bulkResults, setBulkResults] = useState(null);
+  const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
 
   // Add Medicine Form State
   const [addForm, setAddForm] = useState({
@@ -57,14 +57,6 @@ const Medicines = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [apiError, setApiError] = useState("");
 
-  // Bulk upload states (unchanged)
-  const [csvFile, setCsvFile] = useState(null);
-  const [csvData, setCsvData] = useState("");
-  const [bulkMedicines, setBulkMedicines] = useState([]);
-  const [bulkValidationErrors, setBulkValidationErrors] = useState([]);
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkResults, setBulkResults] = useState(null);
-
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [paginationData, setPaginationData] = useState(null);
@@ -72,7 +64,7 @@ const Medicines = () => {
   const { user } = useAuthStore();
 
   // Dropdown options
-  const strengthOptions = ["100mg", "400mg", "600mg", "1g"];
+  const strengthOptions = ["100mg", "200mg", "300mg", "400mg", "500mg", "600mg", "1g"];
   const categoryOptions = ["Tab", "Syp", "Drop", "Inj", "Ointment"];
 
   // Fetch medicines data
@@ -143,7 +135,7 @@ const Medicines = () => {
 
       case "category":
         if (!value || value.trim().length === 0) {
-          return "Category is required";
+          return "Type is required";
         }
         return "";
 
@@ -152,7 +144,7 @@ const Medicines = () => {
           return "Only alphabets, digits and spaces are allowed";
         }
         if (value && value.length > 50) {
-          return "Description cannot exceed 50 characters";
+          return "Formula cannot exceed 50 characters";
         }
         return "";
 
@@ -212,16 +204,6 @@ const Medicines = () => {
     setApiError("");
   };
 
-  // Reset bulk modal states (unchanged)
-  const resetBulkModalStates = () => {
-    setCsvFile(null);
-    setCsvData("");
-    setBulkMedicines([]);
-    setBulkValidationErrors([]);
-    setBulkResults(null);
-    setApiError("");
-  };
-
   // Handle form input changes
   const handleAddFormChange = (field, value) => {
     setAddForm((prev) => ({ ...prev, [field]: value }));
@@ -249,103 +231,6 @@ const Medicines = () => {
       });
     }
     setApiError("");
-  };
-
-  // Bulk medicine validation (for medicine name only - unchanged)
-  const validateMedicineName = (name) => {
-    const regex = /^[a-zA-Z0-9 ]*$/;
-    if (!regex.test(name)) {
-      return "Only alphabets and numbers are allowed";
-    }
-    if (name.length > 50) {
-      return "Medicine name cannot exceed 50 characters";
-    }
-    if (name.trim().length === 0) {
-      return "Medicine name is required";
-    }
-    return "";
-  };
-
-  // Handle CSV file upload (unchanged)
-  const handleCsvFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setApiError("Please select a CSV file");
-      return;
-    }
-
-    setCsvFile(file);
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      const text = e.target.result;
-      setCsvData(text);
-      parseCsvData(text);
-    };
-
-    reader.readAsText(file);
-  };
-
-  // Parse CSV data (unchanged)
-  const parseCsvData = (csvText) => {
-    try {
-      const lines = csvText.split("\n").filter((line) => line.trim());
-      const medicines = [];
-      const errors = [];
-
-      lines.forEach((line, index) => {
-        const name = line.trim().replace(/[",]/g, "");
-
-        if (name) {
-          const validationError = validateMedicineName(name);
-          if (validationError) {
-            errors.push(`Line ${index + 1}: ${validationError}`);
-          } else {
-            medicines.push({ name: name.trim() });
-          }
-        }
-      });
-
-      setBulkMedicines(medicines);
-      setBulkValidationErrors(errors);
-      setApiError("");
-    } catch (error) {
-      setApiError("Failed to parse CSV file");
-    }
-  };
-
-  // Handle CSV data change in textarea (unchanged)
-  const handleCsvDataChange = (value) => {
-    setCsvData(value);
-    parseCsvData(value);
-  };
-
-  // Handle bulk medicine submission (unchanged)
-  const handleBulkSubmit = async () => {
-    if (bulkMedicines.length === 0) {
-      setApiError("No valid medicines to add");
-      return;
-    }
-
-    if (bulkValidationErrors.length > 0) {
-      setApiError("Please fix validation errors before submitting");
-      return;
-    }
-
-    setBulkLoading(true);
-    try {
-      const response = await addBulkMedicines({ medicines: bulkMedicines });
-      setBulkResults(response.data.data);
-      fetchData();
-    } catch (err) {
-      setApiError(
-        err.response?.data?.message || "Failed to add bulk medicines"
-      );
-    } finally {
-      setBulkLoading(false);
-    }
   };
 
   // Handle add medicine
@@ -403,7 +288,7 @@ const Medicines = () => {
     }
   };
 
-  // Handle delete medicine (unchanged)
+  // Handle delete medicine
   const handleDeleteMedicine = async () => {
     try {
       await deleteMedicine(selectedMedicine.medicineId);
@@ -433,11 +318,25 @@ const Medicines = () => {
     setIsEditModalOpen(true);
   };
 
-  // Open delete confirmation modal (unchanged)
+  // Open delete confirmation modal
   const openDeleteModal = (medicine) => {
     setSelectedMedicine(medicine);
     resetModalStates();
     setIsDeleteModalOpen(true);
+  };
+
+  const handleBulkSuccess = (results) => {
+    // Set results and show results modal
+    setBulkResults(results);
+    setIsResultsModalOpen(true);
+    // Refresh the medicine list
+    fetchData();
+  };
+
+  // Add this function to handle results modal close
+  const handleResultsModalClose = () => {
+    setIsResultsModalOpen(false);
+    setBulkResults(null);
   };
 
   if (loading) {
@@ -501,10 +400,7 @@ const Medicines = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  setIsBulkModalOpen(true);
-                  resetBulkModalStates();
-                }}
+                onClick={() => setIsBulkModalOpen(true)}
                 className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200`}
               >
                 <Upload className="w-5 h-5" />
@@ -546,9 +442,7 @@ const Medicines = () => {
             <table className="w-full">
               <thead>
                 <tr className={`${theme.borderSecondary} border-b`}>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Medicine ID</span>
-                  </th>
+
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     <span className={`${theme.textMuted}`}>Name</span>
                   </th>
@@ -556,10 +450,10 @@ const Medicines = () => {
                     <span className={`${theme.textMuted}`}>Strength</span>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Category</span>
+                    <span className={`${theme.textMuted}`}>Type</span>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Description</span>
+                    <span className={`${theme.textMuted}`}>Formula</span>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     <span className={`${theme.textMuted}`}>Manufacturer</span>
@@ -575,20 +469,13 @@ const Medicines = () => {
                     key={medicine._id}
                     className={`${theme.borderSecondary} border-b hover:bg-opacity-50 ${theme.cardSecondary} transition-colors`}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className={`px-6 py-4 ${theme.textSecondary}`}>
                       <div className="flex items-center">
                         <div
                           className={`w-10 h-10 rounded-full ${theme.cardSecondary} flex items-center justify-center mr-3`}
                         >
                           <Pill className="w-5 h-5 text-emerald-500" />
                         </div>
-                        <div className={`font-medium ${theme.textPrimary}`}>
-                          {medicine.medicineId}
-                        </div>
-                      </div>
-                    </td>
-                    <td className={`px-6 py-4 ${theme.textSecondary}`}>
-                      <div className="max-w-xs">
                         <div className="font-medium truncate">
                           {medicine.name}
                         </div>
@@ -674,10 +561,7 @@ const Medicines = () => {
               {!searchTerm && (
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
-                    onClick={() => {
-                      setIsBulkModalOpen(true);
-                      resetBulkModalStates();
-                    }}
+                    onClick={() => setIsBulkModalOpen(true)}
                     className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 mx-auto`}
                   >
                     <Upload className="w-5 h-5" />
@@ -795,7 +679,7 @@ const Medicines = () => {
               <label
                 className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
               >
-                Category *
+                Type *
               </label>
               <select
                 value={addForm.category}
@@ -804,7 +688,7 @@ const Medicines = () => {
                 }
                 className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
               >
-                <option value="">Select category</option>
+                <option value="">Select type</option>
                 {categoryOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -848,7 +732,7 @@ const Medicines = () => {
             <label
               className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
             >
-              Description *
+              Formula *
             </label>
             <input
               type="text"
@@ -897,261 +781,12 @@ const Medicines = () => {
         </div>
       </Modal>
 
-      {/* Bulk Upload Modal (unchanged) */}
-      <Modal
+      {/* Bulk Upload Modal - New Component */}
+      <AddBulkMedicine
         isOpen={isBulkModalOpen}
-        onClose={() => {
-          setIsBulkModalOpen(false);
-          resetBulkModalStates();
-        }}
-        title="Add Bulk Medicines"
-        subtitle="Upload CSV file with medicine names"
-      >
-        <div className="p-6">
-          {!bulkResults ? (
-            <>
-              {/* File Upload Section */}
-              <div className="mb-6">
-                <label
-                  className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
-                >
-                  Upload CSV File *
-                </label>
-                <div
-                  className={`border-2 border-dashed ${theme.borderSecondary} rounded-lg p-6 text-center`}
-                >
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvFileUpload}
-                    className="hidden"
-                    id="csv-upload"
-                  />
-                  <label
-                    htmlFor="csv-upload"
-                    className={`cursor-pointer flex flex-col items-center space-y-2 ${theme.textPrimary}`}
-                  >
-                    <FileText className="w-12 h-12 text-purple-500" />
-                    <span className="text-sm font-medium">
-                      {csvFile ? csvFile.name : "Click to upload CSV file"}
-                    </span>
-                    <span className={`text-xs ${theme.textMuted}`}>
-                      CSV file should contain medicine names, one per line
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Preview Section */}
-              {csvData && (
-                <div className="mb-6">
-                  <label
-                    className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
-                  >
-                    Preview & Edit Medicine Names
-                  </label>
-                  <textarea
-                    value={csvData}
-                    onChange={(e) => handleCsvDataChange(e.target.value)}
-                    rows={10}
-                    className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary} font-mono text-sm`}
-                    placeholder="Medicine names will appear here..."
-                  />
-                  <p className="text-green-500 text-xs mt-1">
-                    * Only alphabets and digits are allowed, No special
-                    characters & max length is 50 characters per name
-                  </p>
-                </div>
-              )}
-
-              {/* Validation Errors */}
-              {bulkValidationErrors.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-red-500 font-medium mb-2">
-                    Validation Errors:
-                  </h4>
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 max-h-32 overflow-y-auto">
-                    {bulkValidationErrors.map((error, index) => (
-                      <p
-                        key={index}
-                        className="text-red-600 dark:text-red-400 text-sm"
-                      >
-                        {error}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Summary */}
-              {bulkMedicines.length > 0 && (
-                <div className="mb-6">
-                  <div
-                    className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4`}
-                  >
-                    <p className={`text-blue-700 dark:text-blue-300 text-sm`}>
-                      Ready to add {bulkMedicines.length} medicine(s)
-                      {bulkValidationErrors.length > 0 && (
-                        <span className="text-red-600 dark:text-red-400">
-                          {" "}
-                          ({bulkValidationErrors.length} error(s) need to be
-                          fixed)
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {apiError && (
-                <div className="mb-6">
-                  <p className="text-red-500 text-sm">{apiError}</p>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => {
-                    setIsBulkModalOpen(false);
-                    resetBulkModalStates();
-                  }}
-                  className={`px-4 py-2 ${theme.cardSecondary} ${theme.borderSecondary} border rounded-lg ${theme.textPrimary}`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleBulkSubmit}
-                  disabled={
-                    bulkMedicines.length === 0 ||
-                    bulkValidationErrors.length > 0 ||
-                    bulkLoading
-                  }
-                  className={`px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-purple-700 transition-all duration-200`}
-                >
-                  {bulkLoading ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Processing...</span>
-                    </div>
-                  ) : (
-                    `Add ${bulkMedicines.length} Medicines`
-                  )}
-                </button>
-              </div>
-            </>
-          ) : (
-            /* Results Section */
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4">
-                  {bulkResults.successCount > 0 ? (
-                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                      <Check className="w-8 h-8 text-green-500" />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-                      <AlertCircle className="w-8 h-8 text-red-500" />
-                    </div>
-                  )}
-                </div>
-                <h3
-                  className={`text-lg font-semibold ${theme.textPrimary} mb-2`}
-                >
-                  Bulk Upload Complete
-                </h3>
-                <p className={`${theme.textMuted}`}>
-                  Processed {bulkResults.totalProcessed} medicine(s)
-                </p>
-              </div>
-
-              {/* Summary Cards */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {bulkResults.successCount}
-                  </div>
-                  <div className="text-sm text-green-700 dark:text-green-300">
-                    Success
-                  </div>
-                </div>
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {bulkResults.duplicateCount}
-                  </div>
-                  <div className="text-sm text-yellow-700 dark:text-yellow-300">
-                    Duplicates
-                  </div>
-                </div>
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                    {bulkResults.failedCount}
-                  </div>
-                  <div className="text-sm text-red-700 dark:text-red-300">
-                    Failed
-                  </div>
-                </div>
-              </div>
-
-              {/* Detailed Results */}
-              {(bulkResults.results.duplicates.length > 0 ||
-                bulkResults.results.failed.length > 0) && (
-                <div className="space-y-4">
-                  {/* Duplicates */}
-                  {bulkResults.results.duplicates.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-yellow-600 dark:text-yellow-400 mb-2">
-                        Duplicate Medicines (
-                        {bulkResults.results.duplicates.length})
-                      </h4>
-                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 max-h-32 overflow-y-auto">
-                        {bulkResults.results.duplicates.map((item, index) => (
-                          <p
-                            key={index}
-                            className="text-yellow-700 dark:text-yellow-300 text-sm"
-                          >
-                            {item.name} - {item.error}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Failed */}
-                  {bulkResults.results.failed.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-red-600 dark:text-red-400 mb-2">
-                        Failed Medicines ({bulkResults.results.failed.length})
-                      </h4>
-                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 max-h-32 overflow-y-auto">
-                        {bulkResults.results.failed.map((item, index) => (
-                          <p
-                            key={index}
-                            className="text-red-700 dark:text-red-300 text-sm"
-                          >
-                            {item.name} - {item.error}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => {
-                    setIsBulkModalOpen(false);
-                    resetBulkModalStates();
-                  }}
-                  className={`px-4 py-2 bg-gradient-to-r ${theme.buttonGradient} text-white rounded-lg`}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={handleBulkSuccess}
+      />
 
       {/* Edit Medicine Modal */}
       <Modal
@@ -1232,7 +867,7 @@ const Medicines = () => {
               <label
                 className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
               >
-                Category *
+                Type *
               </label>
               <select
                 value={editForm.category}
@@ -1241,7 +876,7 @@ const Medicines = () => {
                 }
                 className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
               >
-                <option value="">Select category</option>
+                <option value="">Select type</option>
                 {categoryOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -1285,7 +920,7 @@ const Medicines = () => {
             <label
               className={`block text-sm font-medium ${theme.textSecondary} mb-2`}
             >
-              Description *
+              Formula *
             </label>
             <input
               type="text"
@@ -1294,7 +929,7 @@ const Medicines = () => {
                 handleEditFormChange("description", e.target.value)
               }
               className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
-              placeholder="Enter description"
+              placeholder="Enter formula"
               maxLength={50}
             />
             {validationErrors.description && (
@@ -1374,6 +1009,13 @@ const Medicines = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Bulk Results Modal */}
+      <AddBulkMedicineResults
+        isOpen={isResultsModalOpen}
+        onClose={handleResultsModalClose}
+        results={bulkResults}
+      />
     </div>
   );
 };
