@@ -329,67 +329,109 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
     }
 
     const results: {
-      success: { name: string; medicineId: number }[];
-      failed: { name: string; error: string }[];
-      duplicates: { name: string; error: string }[];
+      success: { name: string; strength: string; category: string; medicineId: number }[];
+      failed: { name: string; strength?: string; category?: string; error: string; lineNumber?: number }[];
+      duplicates: { name: string; strength: string; category: string; error: string; lineNumber?: number }[];
     } = {
       success: [],
       failed: [],
       duplicates: []
     };
 
-    // Validate each medicine name
-    const nameRegex = /^[a-zA-Z0-9 ]+$/;
-    
-    for (const medicine of medicines) {
-      const { name } = medicine;
+    // Validation functions
+    const validateField = (value: string, fieldName: string, maxLength: number, allowEmpty: boolean = false): string => {
+      if (!value || typeof value !== 'string') {
+        return allowEmpty ? '' : `${fieldName} is required`;
+      }
+
+      const trimmedValue = value.trim();
       
-      // Validate name format
-      if (!name || typeof name !== 'string') {
+      if (!allowEmpty && trimmedValue.length === 0) {
+        return `${fieldName} cannot be empty`;
+      }
+
+      const nameRegex = /^[a-zA-Z0-9 ]*$/;
+      if (!nameRegex.test(trimmedValue)) {
+        return `${fieldName} can only contain alphabets, digits and spaces`;
+      }
+
+      if (trimmedValue.length > maxLength) {
+        return `${fieldName} cannot exceed ${maxLength} characters`;
+      }
+
+      return '';
+    };
+
+    // Track duplicates within the CSV itself
+    const csvDuplicateTracker = new Map<string, number>();
+
+    for (let index = 0; index < medicines.length; index++) {
+      const medicine = medicines[index];
+      const lineNumber = index + 1;
+      
+      const { name, strength, category, manufacturer, description } = medicine;
+
+      // Validate each field
+      const nameError = validateField(name, 'Medicine name', 50);
+      const strengthError = validateField(strength, 'Strength', 10);
+      const categoryError = validateField(category, 'Category', 10);
+      const manufacturerError = validateField(manufacturer, 'Manufacturer', 20);
+      const descriptionError = validateField(description, 'Description', 40, true); // Allow empty
+
+      // If any validation fails, add to failed array
+      if (nameError || strengthError || categoryError || manufacturerError || descriptionError) {
+        const errors = [nameError, strengthError, categoryError, manufacturerError, descriptionError]
+          .filter(error => error.length > 0);
+        
         results.failed.push({
           name: name || 'Unknown',
-          error: 'Medicine name is required'
+          strength: strength || '',
+          category: category || '',
+          error: errors.join(', '),
+          lineNumber: lineNumber
         });
         continue;
       }
 
       const trimmedName = name.trim();
-      
-      // Validate name constraints
-      if (!nameRegex.test(trimmedName)) {
-        results.failed.push({
+      const trimmedStrength = strength.trim();
+      const trimmedCategory = category.trim();
+      const trimmedManufacturer = manufacturer.trim();
+      const trimmedDescription = description ? description.trim() : '';
+
+      // Create unique key for duplicate checking (name + strength + category)
+      const duplicateKey = `${trimmedName.toLowerCase()}_${trimmedStrength.toLowerCase()}_${trimmedCategory.toLowerCase()}`;
+
+      // Check for duplicates within CSV
+      if (csvDuplicateTracker.has(duplicateKey)) {
+        const firstOccurrenceLine = csvDuplicateTracker.get(duplicateKey);
+        results.duplicates.push({
           name: trimmedName,
-          error: 'Only alphabets and digits are allowed'
+          strength: trimmedStrength,
+          category: trimmedCategory,
+          error: `Duplicate entry found within CSV (first occurrence at line ${firstOccurrenceLine})`,
+          lineNumber: lineNumber
         });
         continue;
       }
 
-      if (trimmedName.length > 50) {
-        results.failed.push({
-          name: trimmedName,
-          error: 'Medicine name cannot exceed 50 characters'
-        });
-        continue;
-      }
-
-      if (trimmedName.length === 0) {
-        results.failed.push({
-          name: trimmedName,
-          error: 'Medicine name cannot be empty'
-        });
-        continue;
-      }
+      csvDuplicateTracker.set(duplicateKey, lineNumber);
 
       try {
-        // Check if medicine already exists
+        // Check if medicine already exists in database with same name + strength + category combination
         const existingMedicine = await Medicine.findOne({ 
-          name: { $regex: new RegExp(`^${trimmedName}$`, 'i') } 
+          name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
+          strength: { $regex: new RegExp(`^${trimmedStrength}$`, 'i') },
+          category: { $regex: new RegExp(`^${trimmedCategory}$`, 'i') }
         });
 
         if (existingMedicine) {
           results.duplicates.push({
             name: trimmedName,
-            error: 'Medicine already exists'
+            strength: trimmedStrength,
+            category: trimmedCategory,
+            error: 'Medicine with same name, strength and type already exists in database',
+            lineNumber: lineNumber
           });
           continue;
         }
@@ -401,23 +443,28 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
         const newMedicine = new Medicine({
           medicineId,
           name: trimmedName,
-          description: "",
-          category: "",
-          strength: "",
-          manufacturer: "",
+          strength: trimmedStrength,
+          category: trimmedCategory,
+          manufacturer: trimmedManufacturer,
+          description: trimmedDescription,
           isActive: true
         });
 
         await newMedicine.save();
         results.success.push({
           name: trimmedName,
+          strength: trimmedStrength,
+          category: trimmedCategory,
           medicineId: medicineId
         });
 
       } catch (error: any) {
         results.failed.push({
           name: trimmedName,
-          error: error.message || 'Failed to create medicine'
+          strength: trimmedStrength,
+          category: trimmedCategory,
+          error: error.message || 'Failed to create medicine',
+          lineNumber: lineNumber
         });
       }
     }
