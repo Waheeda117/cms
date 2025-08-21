@@ -5,6 +5,7 @@ export interface IMedicine extends Document {
   name: string;
   description?: string;
   category?: string;
+  strength?: string;
   manufacturer?: string;
   isActive: boolean;
   createdAt: Date;
@@ -33,6 +34,11 @@ const medicineSchema = new Schema<IMedicine>(
       trim: true,
       default: "",
     },
+    strength: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     manufacturer: {
       type: String,
       trim: true,
@@ -48,6 +54,7 @@ const medicineSchema = new Schema<IMedicine>(
 
 // Create indexes for efficient querying
 // medicineSchema.index({ medicineId: 1 });
+medicineSchema.index({ name: 1, strength: 1, category: 1 });
 medicineSchema.index({ name: 1 });
 medicineSchema.index({ isActive: 1 });
 

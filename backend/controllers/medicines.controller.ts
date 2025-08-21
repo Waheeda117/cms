@@ -16,6 +16,7 @@ export const getMedicines = async (req: AuthenticatedRequest, res: Response): Pr
       limit = 50,
       search = "",
       category = "",
+      strength = "",
       isActive = "",
       sortBy = "name",
       sortOrder = "asc"
@@ -36,6 +37,11 @@ export const getMedicines = async (req: AuthenticatedRequest, res: Response): Pr
     // Filter by category
     if (category) {
       searchQuery.category = { $regex: category, $options: "i" };
+    }
+
+    // Filter by strength
+    if (strength) {
+      searchQuery.strength = { $regex: strength, $options: "i" };
     }
 
     // Filter by active status
@@ -93,7 +99,7 @@ export const getMedicines = async (req: AuthenticatedRequest, res: Response): Pr
 // Create new medicine
 export const createMedicine = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { name, description, category, manufacturer } = req.body;
+    const { name, description, category, strength, manufacturer } = req.body;
 
     // Validate required fields
     if (!name) {
@@ -104,15 +110,17 @@ export const createMedicine = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Check if medicine with same name already exists
+    // Check if medicine with same name, strength, and category combination already exists
     const existingMedicine = await Medicine.findOne({ 
-      name: { $regex: new RegExp(`^${name}$`, 'i') } 
+      name: { $regex: new RegExp(`^${name}$`, 'i') },
+      strength: strength?.trim() || "",
+      category: category?.trim() || ""
     });
 
     if (existingMedicine) {
       res.status(400).json({
         success: false,
-        message: "Medicine with this name already exists"
+        message: "Medicine with this name, strength, and type combination already exists"
       });
       return;
     }
@@ -126,6 +134,7 @@ export const createMedicine = async (req: AuthenticatedRequest, res: Response): 
       name: name.trim(),
       description: description?.trim() || "",
       category: category?.trim() || "",
+      strength: strength?.trim() || "",
       manufacturer: manufacturer?.trim() || ""
     });
 
@@ -181,7 +190,7 @@ export const getMedicineById = async (req: AuthenticatedRequest, res: Response):
 export const updateMedicine = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, description, category, manufacturer, isActive } = req.body;
+    const { name, description, category, strength, manufacturer, isActive } = req.body;
 
     const medicine = await Medicine.findOne({ medicineId:  parseInt(id ?? "") });
 
@@ -213,6 +222,7 @@ export const updateMedicine = async (req: AuthenticatedRequest, res: Response): 
     if (name) medicine.name = name.trim();
     if (description !== undefined) medicine.description = description.trim();
     if (category !== undefined) medicine.category = category.trim();
+    if (strength !== undefined) medicine.strength = strength.trim();
     if (manufacturer !== undefined) medicine.manufacturer = manufacturer.trim();
     if (isActive !== undefined) medicine.isActive = isActive;
 
@@ -269,12 +279,19 @@ export const deleteMedicine = async (req: AuthenticatedRequest, res: Response): 
 export const getMedicinesDropdown = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     let medicines = await Medicine.find({ isActive: true })
-      .select('medicineId name')
+      .select('medicineId name description category strength manufacturer')
       .sort({ name: 1 })
       .lean();
 
+    // Transform the data to concatenate all fields in the name
+    const transformedMedicines = medicines.map(medicine => ({
+      _id: medicine._id,
+      medicineId: medicine.medicineId,
+      name: `${medicine.name} ${medicine.strength || ''} ${medicine.category || ''} ${medicine.manufacturer || ''} ${medicine.description || ''}`.replace(/\s+/g, ' ').trim()
+    }));
+
     // Put medicineId === 1 on top
-    medicines = medicines.sort((a, b) => {
+    const sortedMedicines = transformedMedicines.sort((a, b) => {
       if (a.medicineId === 1) return -1;
       if (b.medicineId === 1) return 1;
       return 0;
@@ -282,7 +299,7 @@ export const getMedicinesDropdown = async (req: AuthenticatedRequest, res: Respo
 
     res.status(200).json({
       success: true,
-      data: medicines
+      data: sortedMedicines
     });
 
   } catch (error: any) {
@@ -386,6 +403,7 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
           name: trimmedName,
           description: "",
           category: "",
+          strength: "",
           manufacturer: "",
           isActive: true
         });
