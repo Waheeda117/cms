@@ -1,12 +1,26 @@
-import React from "react";
-import { Check, AlertCircle } from "lucide-react";
+import React, { useState } from "react";
+import { Check, AlertCircle, Download } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme.js";
 import Modal from "../../components/UI/Modal.jsx";
+import { downloadResultsAsZip } from "../../utils/downloadUtils.js";
 
 const AddBulkMedicineResults = ({ isOpen, onClose, results }) => {
   const { theme } = useTheme();
+  const [downloading, setDownloading] = useState(false);
 
   if (!results) return null;
+
+  const handleDownloadResults = async () => {
+    try {
+      setDownloading(true);
+      await downloadResultsAsZip(results);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // You can add a toast notification here
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <Modal
@@ -59,6 +73,34 @@ const AddBulkMedicineResults = ({ isOpen, onClose, results }) => {
               Failed
             </div>
           </div>
+        </div>
+
+        {/* Download Section */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <h4 className="font-medium text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Download Results
+          </h4>
+          <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
+            Download a ZIP file containing separate CSV files for successful, failed, and duplicate entries organized in folders.
+          </p>
+          <button
+            onClick={handleDownloadResults}
+            disabled={downloading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {downloading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Preparing Download...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Download Results ZIP</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Detailed Results */}
