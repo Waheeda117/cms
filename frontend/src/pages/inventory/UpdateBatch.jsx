@@ -27,7 +27,11 @@ import {
   getMedicineById,
   getMedicineByName,
 } from "../../constants/selectOptions";
-import { getBatchById, updateBatchById, getMedicinesDropdown  } from "../../api/api";
+import {
+  getBatchById,
+  updateBatchById,
+  getMedicinesDropdown,
+} from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
 import { useBatchUpdateStore } from "../../store/batchUpdateStore";
 import Modal from "../../components/UI/Modal";
@@ -69,7 +73,7 @@ const UpdateBatch = () => {
   const [batchIsDraft, setBatchIsDraft] = useState(false); // Track draft status
 
   const [editingMiscellaneous, setEditingMiscellaneous] = useState(false);
-const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
+  const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
 
   // Edit mode state - Updated to include expiry date
   const [editingIndex, setEditingIndex] = useState(null);
@@ -104,15 +108,15 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
     user?.role === "admin"
       ? "/admin/inventory-management"
       : user?.role === "pharmacist_inventory_staff"
-        ? "/pharmacist_inventory_staff/inventory-management"
-        : "/inventory-management";
+      ? "/pharmacist_inventory_staff/inventory-management"
+      : "/inventory-management";
 
   const submitRedirectPath =
     user?.role === "admin"
       ? `/admin/inventory-management/${batchId}`
       : user?.role === "pharmacist_inventory_staff"
-        ? `/pharmacist_inventory_staff/inventory-management/${batchId}`
-        : "/inventory-management";
+      ? `/pharmacist_inventory_staff/inventory-management/${batchId}`
+      : "/inventory-management";
 
   // Helper functions for date formatting
   const formatDateForDisplay = (dateString) => {
@@ -138,17 +142,17 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
     return "";
   };
 
-
   const getMedicineByIdFromDropdown = (medicineId) => {
-    return medicinesDropdown.find(medicine => medicine.medicineId === medicineId);
-  };
-
-  const getMedicineByNameFromDropdown = (medicineName) => {
-    return medicinesDropdown.find(medicine => 
-      medicine.name.toLowerCase() === medicineName.toLowerCase()
+    return medicinesDropdown.find(
+      (medicine) => medicine.medicineId === medicineId
     );
   };
 
+  const getMedicineByNameFromDropdown = (medicineName) => {
+    return medicinesDropdown.find(
+      (medicine) => medicine.name.toLowerCase() === medicineName.toLowerCase()
+    );
+  };
 
   // Auto-cleanup old data on component mount
   useEffect(() => {
@@ -169,7 +173,6 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
     }
   }, [miscellaneousAmount, batchId, updateMiscellaneousAmount]);
 
-
   // Add this useEffect after the existing useEffect hooks
   useEffect(() => {
     const fetchMedicinesDropdown = async () => {
@@ -178,15 +181,15 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
         const response = await getMedicinesDropdown();
         setMedicinesDropdown(response.data || []);
       } catch (error) {
-        console.error('Error fetching medicines dropdown:', error);
-        setError('Failed to load medicines list. Please refresh the page.');
+        console.error("Error fetching medicines dropdown:", error);
+        setError("Failed to load medicines list. Please refresh the page.");
       } finally {
         setMedicinesLoading(false);
       }
     };
 
-  fetchMedicinesDropdown();
-}, []);
+    fetchMedicinesDropdown();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -223,8 +226,8 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
           !persistentBatchData.medicines ||
           persistentBatchData.medicines.length === 0
         ) {
-            const existingMedicines = Array.isArray(batch.data.medicines)
-              ? batch.data.medicines.map((medicine) => {
+          const existingMedicines = Array.isArray(batch.data.medicines)
+            ? batch.data.medicines.map((medicine) => {
                 if (!medicine.medicineId) {
                   const foundMedicine = getMedicineByNameFromDropdown(
                     medicine.medicineName
@@ -236,7 +239,7 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
                 }
                 return medicine;
               })
-              : [];
+            : [];
 
           setMedicines(existingMedicines);
           setMiscellaneousAmount(batch.data.miscellaneousAmount || 0);
@@ -324,13 +327,13 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
   const isPriceExceeded =
     totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0);
 
-  // Update the canUpdateBatch validation (around line 200)
+  // Update the canUpdateBatch validation
   const canUpdateBatch = useMemo(() => {
     // Always check if nothing is in edit mode
     if (editingIndex !== null || editingMiscellaneous) {
       return false;
     }
-    
+
     // For draft operations, always allow (no validation)
     return true;
   }, [editingIndex, editingMiscellaneous]);
@@ -341,95 +344,107 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
     if (editingIndex !== null || editingMiscellaneous) {
       return false;
     }
-    
+
     // For finalizing, require strict validation
+    return !hasPriceMismatch && medicines && medicines.length > 0;
+  }, [hasPriceMismatch, medicines, editingIndex, editingMiscellaneous]);
+
+  // Add validation for updating already finalized batches
+  const canUpdateFinalizedBatch = useMemo(() => {
+    // Check if nothing is in edit mode
+    if (editingIndex !== null || editingMiscellaneous) {
+      return false;
+    }
+
+    // For finalized batches, require strict validation
     return !hasPriceMismatch && medicines && medicines.length > 0;
   }, [hasPriceMismatch, medicines, editingIndex, editingMiscellaneous]);
 
   // Update the price exceeded validation for drafts
   const isPriceExceededForDraft = useMemo(() => {
     if (batchIsDraft) {
-      return totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0);
+      return (
+        totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0)
+      );
     }
     return isPriceExceeded;
   }, [batchIsDraft, totalWithMiscellaneous, batchDetails, isPriceExceeded]);
 
   const handleEditMiscellaneous = () => {
-  setEditingMiscellaneous(true);
-  setEditMiscellaneousValue(miscellaneousAmount.toString());
-};
+    setEditingMiscellaneous(true);
+    setEditMiscellaneousValue(miscellaneousAmount.toString());
+  };
 
-const handleSaveMiscellaneousEdit = () => {
-  const newAmount = parseFloat(editMiscellaneousValue);
-  
-  // Validation
-  if (isNaN(newAmount) || newAmount < 0) {
-    setError("Please enter a valid miscellaneous amount");
-    return;
-  }
-  
-  // Check if editing would exceed the total price
-  const newGrandTotal = totalMedicinePrice + newAmount;
-  if (newGrandTotal > parseFloat(batchDetails?.overallPrice || 0)) {
-    setError("Editing miscellaneous amount would exceed the total batch price.");
-    return;
-  }
-  
-  setMiscellaneousAmount(newAmount);
-  setEditingMiscellaneous(false);
-  setEditMiscellaneousValue("");
-  setError("");
-};
+  const handleSaveMiscellaneousEdit = () => {
+    const newAmount = parseFloat(editMiscellaneousValue);
 
-const handleCancelMiscellaneousEdit = () => {
-  setEditingMiscellaneous(false);
-  setEditMiscellaneousValue("");
-};
+    // Validation
+    if (isNaN(newAmount) || newAmount < 0) {
+      setError("Please enter a valid miscellaneous amount");
+      return;
+    }
 
+    // Check if editing would exceed the total price
+    const newGrandTotal = totalMedicinePrice + newAmount;
+    if (newGrandTotal > parseFloat(batchDetails?.overallPrice || 0)) {
+      setError(
+        "Editing miscellaneous amount would exceed the total batch price."
+      );
+      return;
+    }
 
-const handleDecimalInput = (e, fieldName, isEdit = false) => {
-  let value = e.target.value;
+    setMiscellaneousAmount(newAmount);
+    setEditingMiscellaneous(false);
+    setEditMiscellaneousValue("");
+    setError("");
+  };
 
-  // Allow empty input
-  if (value === "") {
+  const handleCancelMiscellaneousEdit = () => {
+    setEditingMiscellaneous(false);
+    setEditMiscellaneousValue("");
+  };
+
+  const handleDecimalInput = (e, fieldName, isEdit = false) => {
+    let value = e.target.value;
+
+    // Allow empty input
+    if (value === "") {
+      if (isEdit && fieldName === "miscellaneous") {
+        setEditMiscellaneousValue(value);
+      }
+      return;
+    }
+
+    // Remove any non-numeric characters except dot (.)
+    value = value.replace(/[^0-9.]/g, "");
+
+    const dotIndex = value.indexOf(".");
+    if (dotIndex !== -1) {
+      value =
+        value.substring(0, dotIndex + 1) +
+        value.substring(dotIndex + 1).replace(/\./g, "");
+    }
+
+    // Ensure only one dot (.)
+    const parts = value.split(".");
+    if (parts.length > 2) {
+      value = parts[0] + "." + parts.slice(1).join("");
+    }
+
+    // Limit to 9 digits before decimal and 2 after
+    if (parts[0] && parts[0].length > 9) {
+      parts[0] = parts[0].substring(0, 9);
+    }
+    if (parts[1] && parts[1].length > 2) {
+      parts[1] = parts[1].substring(0, 2);
+    }
+
+    value = parts.join(".");
+
     if (isEdit && fieldName === "miscellaneous") {
       setEditMiscellaneousValue(value);
     }
-    return;
-  }
-
-  // Remove any non-numeric characters except dot (.)
-  value = value.replace(/[^0-9.]/g, "");
-
-  const dotIndex = value.indexOf(".");
-  if (dotIndex !== -1) {
-    value =
-      value.substring(0, dotIndex + 1) +
-      value.substring(dotIndex + 1).replace(/\./g, "");
-  }
-
-  // Ensure only one dot (.)
-  const parts = value.split(".");
-  if (parts.length > 2) {
-    value = parts[0] + "." + parts.slice(1).join("");
-  }
-
-  // Limit to 9 digits before decimal and 2 after
-  if (parts[0] && parts[0].length > 9) {
-    parts[0] = parts[0].substring(0, 9);
-  }
-  if (parts[1] && parts[1].length > 2) {
-    parts[1] = parts[1].substring(0, 2);
-  }
-
-  value = parts.join(".");
-
-  if (isEdit && fieldName === "miscellaneous") {
-    setEditMiscellaneousValue(value);
-  }
-};
-
-
+  };
 
   useEffect(() => {
     if (currentMedicine.medicineId === 1) {
@@ -468,25 +483,26 @@ const handleDecimalInput = (e, fieldName, isEdit = false) => {
     if (error) setError("");
   };
 
-const handleMedicineSelect = (medicine) => {
-  // Set default expiry date to 2 years from now when medicine is selected
-  const defaultExpiryDate = new Date();
-  defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 2);
-  const defaultExpiryDateString = defaultExpiryDate
-    .toISOString()
-    .split("T")[0];
+  const handleMedicineSelect = (medicine) => {
+    // Set default expiry date to 2 years from now when medicine is selected
+    const defaultExpiryDate = new Date();
+    defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 2);
+    const defaultExpiryDateString = defaultExpiryDate
+      .toISOString()
+      .split("T")[0];
 
-  setCurrentMedicine((prev) => ({
-    ...prev,
-    medicineId: medicine.medicineId, // Use medicineId from API
-    medicineName: medicine.name,
-    quantity: medicine.medicineId === 1 ? "" : prev.quantity,
-    price: medicine.medicineId === 1 ? remainingAmount.toFixed(2) : prev.price,
-    expiryDate: medicine.medicineId === 1 ? "" : "", // Set default expiry for non-miscellaneous
-  }));
-  setShowMedicineDropdown(false);
-  setSearchTerm("");
-};
+    setCurrentMedicine((prev) => ({
+      ...prev,
+      medicineId: medicine.medicineId, // Use medicineId from API
+      medicineName: medicine.name,
+      quantity: medicine.medicineId === 1 ? "" : prev.quantity,
+      price:
+        medicine.medicineId === 1 ? remainingAmount.toFixed(2) : prev.price,
+      expiryDate: medicine.medicineId === 1 ? "" : "", // Set default expiry for non-miscellaneous
+    }));
+    setShowMedicineDropdown(false);
+    setSearchTerm("");
+  };
 
   const checkPriceExceeded = (price, quantity) => {
     const medicineTotal = parseFloat(price) * parseInt(quantity);
@@ -511,18 +527,18 @@ const handleMedicineSelect = (medicine) => {
       return;
     }
 
-      // Skip duplicate check for miscellaneous
-      if (currentMedicine.medicineId !== 1) {
-        const existingMedicine = medicines.find(
-          (med) => med.medicineId === currentMedicine.medicineId
+    // Skip duplicate check for miscellaneous
+    if (currentMedicine.medicineId !== 1) {
+      const existingMedicine = medicines.find(
+        (med) => med.medicineId === currentMedicine.medicineId
+      );
+      if (existingMedicine) {
+        setError(
+          "This medicine is already added to the list. Please select a different medicine or update the existing entry."
         );
-        if (existingMedicine) {
-          setError(
-            "This medicine is already added to the list. Please select a different medicine or update the existing entry."
-          );
-          return;
-        }
+        return;
       }
+    }
 
     if (
       currentMedicine.medicineId !== 1 &&
@@ -625,11 +641,11 @@ const handleMedicineSelect = (medicine) => {
       prev.map((medicine, i) =>
         i === index
           ? {
-            ...medicine,
-            price: parseFloat(editValues.price),
-            quantity: parseInt(editValues.quantity),
-            expiryDate: editValues.expiryDate, // Update expiry date
-          }
+              ...medicine,
+              price: parseFloat(editValues.price),
+              quantity: parseInt(editValues.quantity),
+              expiryDate: editValues.expiryDate, // Update expiry date
+            }
           : medicine
       )
     );
@@ -657,7 +673,9 @@ const handleMedicineSelect = (medicine) => {
 
     // For draft saves, only check if price exceeds batch price
     if (batchIsDraft && !finalize) {
-      if (totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0)) {
+      if (
+        totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0)
+      ) {
         setError("Total amount cannot exceed the batch price");
         return;
       }
@@ -724,13 +742,12 @@ const handleMedicineSelect = (medicine) => {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-        "Failed to update batch. Please try again."
+          "Failed to update batch. Please try again."
       );
     } finally {
       setUpdateLoading(false);
     }
   };
-
 
   const handleCancel = () => {
     setShowCancelModal(true);
@@ -886,49 +903,54 @@ const handleMedicineSelect = (medicine) => {
                 </button>
               </div>
 
-                {showMedicineDropdown && (
-                  <div
-                    className={`absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-md ${theme.card} shadow-lg ${theme.border} border`}
-                  >
-                    {medicinesLoading ? (
-                      <div className="px-4 py-2 text-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto"></div>
-                        <span className={`text-sm ${theme.textMuted} mt-2`}>Loading medicines...</span>
-                      </div>
-                    ) : (
-                      <ul>
-                        {medicinesDropdown.filter((medicine) =>
+              {showMedicineDropdown && (
+                <div
+                  className={`absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-md ${theme.card} shadow-lg ${theme.border} border`}
+                >
+                  {medicinesLoading ? (
+                    <div className="px-4 py-2 text-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto"></div>
+                      <span className={`text-sm ${theme.textMuted} mt-2`}>
+                        Loading medicines...
+                      </span>
+                    </div>
+                  ) : (
+                    <ul>
+                      {medicinesDropdown
+                        .filter((medicine) =>
                           medicine.name
                             .toLowerCase()
                             .includes(searchTerm.toLowerCase())
                         )
-                          .slice(0, 10)
-                          .map((medicine) => (
-                            <li
-                              key={medicine._id}
-                              onClick={() => handleMedicineSelect(medicine)}
-                              className={`px-4 py-2 cursor-pointer hover:${theme.cardSecondary
-                                } ${theme.textPrimary} ${medicine.name === "MISCELLANEOUS"
-                                  ? "bg-yellow-50 border-l-4 border-yellow-400"
-                                  : ""
-                                }`}
-                            >
-                              {medicine.name}
-                            </li>
-                          ))}
-                        {medicinesDropdown.filter((medicine) =>
-                          medicine.name
-                            .toLowerCase()
-                            .includes(searchTerm.toLowerCase())
-                        ).length === 0 && (
-                          <li className={`px-4 py-2 ${theme.textMuted}`}>
-                            No medicines found
+                        .slice(0, 10)
+                        .map((medicine) => (
+                          <li
+                            key={medicine._id}
+                            onClick={() => handleMedicineSelect(medicine)}
+                            className={`px-4 py-2 cursor-pointer hover:${
+                              theme.cardSecondary
+                            } ${theme.textPrimary} ${
+                              medicine.name === "MISCELLANEOUS"
+                                ? "bg-yellow-50 border-l-4 border-yellow-400"
+                                : ""
+                            }`}
+                          >
+                            {medicine.name}
                           </li>
-                        )}
-                      </ul>
-                    )}
-                  </div>
-                )}
+                        ))}
+                      {medicinesDropdown.filter((medicine) =>
+                        medicine.name
+                          .toLowerCase()
+                          .includes(searchTerm.toLowerCase())
+                      ).length === 0 && (
+                        <li className={`px-4 py-2 ${theme.textMuted}`}>
+                          No medicines found
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right side - Price, Quantity, and Expiry Date fields */}
@@ -1027,7 +1049,7 @@ const handleMedicineSelect = (medicine) => {
                             : null
                         }
                         onChange={(date) => {
-                          const isoDate = date ? toLocalISODate(date) : "";   // ✅ safe YYYY-MM-DD
+                          const isoDate = date ? toLocalISODate(date) : ""; // ✅ safe YYYY-MM-DD
                           setCurrentMedicine((prev) => ({
                             ...prev,
                             expiryDate: isoDate,
@@ -1105,8 +1127,9 @@ const handleMedicineSelect = (medicine) => {
                     medicines.map((medicine, index) => (
                       <tr
                         key={`${medicine.medicineId}-${index}`}
-                        className={`${index % 2 === 0 ? theme.card : theme.cardSecondary
-                          } border-b ${theme.borderSecondary}`}
+                        className={`${
+                          index % 2 === 0 ? theme.card : theme.cardSecondary
+                        } border-b ${theme.borderSecondary}`}
                       >
                         <td className="px-4 py-3">
                           <div
@@ -1166,7 +1189,7 @@ const handleMedicineSelect = (medicine) => {
                                   : null
                               }
                               onChange={(date) => {
-                                const iso = date ? toLocalISODate(date) : "";   // ✅ safe ISO (YYYY-MM-DD)
+                                const iso = date ? toLocalISODate(date) : ""; // ✅ safe ISO (YYYY-MM-DD)
                                 setEditValues((prev) => ({
                                   ...prev,
                                   expiryDate: iso,
@@ -1177,7 +1200,6 @@ const handleMedicineSelect = (medicine) => {
                               placeholderText="DD/MM/YYYY"
                               className={`w-32 px-2 py-1 text-center ${theme.input} rounded ${theme.borderSecondary} border ${theme.focus} focus:ring-1`}
                             />
-
                           ) : medicine.expiryDate ? (
                             formatDateForDisplay(medicine.expiryDate)
                           ) : (
@@ -1190,12 +1212,12 @@ const handleMedicineSelect = (medicine) => {
                         >
                           {editingIndex === index
                             ? `PKR ${(
-                              parseFloat(editValues.quantity || 0) *
-                              parseFloat(editValues.price || 0)
-                            ).toFixed(2)}`
+                                parseFloat(editValues.quantity || 0) *
+                                parseFloat(editValues.price || 0)
+                              ).toFixed(2)}`
                             : `PKR ${(
-                              medicine.quantity * medicine.price
-                            ).toFixed(2)}`}
+                                medicine.quantity * medicine.price
+                              ).toFixed(2)}`}
                         </td>
 
                         <td
@@ -1260,86 +1282,87 @@ const handleMedicineSelect = (medicine) => {
             </div>
           </div>
 
-
-{miscellaneousAmount > 0 && (
-  <div
-    className={`${theme.card} rounded-lg border ${theme.borderSecondary} mb-8 p-4`}
-  >
-    <div className="flex justify-between items-center">
-      <div className="flex items-center">
-        <DollarSign className="w-5 h-5 text-yellow-500 mr-2" />
-        <div>
-          <p className={`text-sm ${theme.textMuted}`}>
-            Miscellaneous Amount
-          </p>
-          {editingMiscellaneous ? (
-            <div className="flex items-center space-x-2 mt-1">
-              <input
-                type="text"
-                value={editMiscellaneousValue}
-                onChange={(e) => handleDecimalInput(e, "miscellaneous", true)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSaveMiscellaneousEdit();
-                  } else if (e.key === 'Escape') {
-                    handleCancelMiscellaneousEdit();
-                  }
-                }}
-                step="0.01"
-                min="0"
-                max={remainingAmount + miscellaneousAmount}
-                className={`w-32 px-2 py-1 ${theme.input} rounded ${theme.borderSecondary} border ${theme.focus} focus:ring-1`}
-                placeholder="Enter amount"
-                autoFocus
-              />
+          {miscellaneousAmount > 0 && (
+            <div
+              className={`${theme.card} rounded-lg border ${theme.borderSecondary} mb-8 p-4`}
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex items-center">
+                  <DollarSign className="w-5 h-5 text-yellow-500 mr-2" />
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>
+                      Miscellaneous Amount
+                    </p>
+                    {editingMiscellaneous ? (
+                      <div className="flex items-center space-x-2 mt-1">
+                        <input
+                          type="text"
+                          value={editMiscellaneousValue}
+                          onChange={(e) =>
+                            handleDecimalInput(e, "miscellaneous", true)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveMiscellaneousEdit();
+                            } else if (e.key === "Escape") {
+                              handleCancelMiscellaneousEdit();
+                            }
+                          }}
+                          step="0.01"
+                          min="0"
+                          max={remainingAmount + miscellaneousAmount}
+                          className={`w-32 px-2 py-1 ${theme.input} rounded ${theme.borderSecondary} border ${theme.focus} focus:ring-1`}
+                          placeholder="Enter amount"
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      <p className={`text-lg font-bold ${theme.textPrimary}`}>
+                        PKR {miscellaneousAmount.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {editingMiscellaneous ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleSaveMiscellaneousEdit}
+                        className={`p-1.5 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors`}
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelMiscellaneousEdit}
+                        className={`p-1.5 rounded-lg bg-gray-500 text-white hover:bg-gray-600 transition-colors`}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleEditMiscellaneous}
+                        className={`p-1.5 rounded-lg ${theme.cardSecondary} hover:bg-blue-500 hover:text-white transition-colors`}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={removeMiscellaneous}
+                        className={`p-1.5 rounded-lg ${theme.cardSecondary} ${theme.textPrimary} hover:bg-red-500 hover:text-white transition-colors`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-          ) : (
-            <p className={`text-lg font-bold ${theme.textPrimary}`}>
-              PKR {miscellaneousAmount.toFixed(2)}
-            </p>
           )}
-        </div>
-      </div>
-      <div className="flex items-center space-x-2">
-        {editingMiscellaneous ? (
-          <>
-            <button
-              type="button"
-              onClick={handleSaveMiscellaneousEdit}
-              className={`p-1.5 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors`}
-            >
-              <Check className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleCancelMiscellaneousEdit}
-              className={`p-1.5 rounded-lg bg-gray-500 text-white hover:bg-gray-600 transition-colors`}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handleEditMiscellaneous}
-              className={`p-1.5 rounded-lg ${theme.cardSecondary} hover:bg-blue-500 hover:text-white transition-colors`}
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={removeMiscellaneous}
-              className={`p-1.5 rounded-lg ${theme.cardSecondary} ${theme.textPrimary} hover:bg-red-500 hover:text-white transition-colors`}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  </div>
-)}
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div
@@ -1401,83 +1424,86 @@ const handleMedicineSelect = (medicine) => {
             </div>
           </div>
 
-            {/* Updated warning message - only show for finalized batches or when price exceeds */}
-            {medicines &&
-              medicines.length > 0 &&
-              ((batchIsDraft && isPriceExceededForDraft) || (!batchIsDraft && hasPriceMismatch && isPriceExceeded)) && (
-                <div
-                  className={`p-4 rounded-lg border border-red-500 bg-red-500 bg-opacity-10 flex items-center mb-8`}
-                >
-                  <AlertCircle className={`w-5 h-5 text-red-500 mr-2`} />
-                  <div>
-                    <p className={`text-red-700 dark:text-red-300 font-medium`}>
-                      {batchIsDraft 
-                        ? "Total amount cannot exceed the batch price"
-                        : "Total medicine price has exceeded against this Cheque Number"
-                      }
-                    </p>
-                    <p className={`text-sm ${theme.textPrimary}`}>
-                      Grand total (PKR {totalWithMiscellaneous.toFixed(2)})
-                      exceeds batch price (PKR{" "}
-                      {parseFloat(batchDetails?.overallPrice || 0).toFixed(2)}) by
-                      PKR {priceDifference.toFixed(2)}
-                    </p>
-                  </div>
+          {/* Updated warning message - only show for finalized batches or when price exceeds */}
+          {medicines &&
+            medicines.length > 0 &&
+            ((batchIsDraft && isPriceExceededForDraft) ||
+              (!batchIsDraft && hasPriceMismatch && isPriceExceeded)) && (
+              <div
+                className={`p-4 rounded-lg border border-red-500 bg-red-500 bg-opacity-10 flex items-center mb-8`}
+              >
+                <AlertCircle className={`w-5 h-5 text-red-500 mr-2`} />
+                <div>
+                  <p className={`text-red-700 dark:text-red-300 font-medium`}>
+                    {batchIsDraft
+                      ? "Total amount cannot exceed the batch price"
+                      : "Total medicine price has exceeded against this Cheque Number"}
+                  </p>
+                  <p className={`text-sm ${theme.textPrimary}`}>
+                    Grand total (PKR {totalWithMiscellaneous.toFixed(2)})
+                    exceeds batch price (PKR{" "}
+                    {parseFloat(batchDetails?.overallPrice || 0).toFixed(2)}) by
+                    PKR {priceDifference.toFixed(2)}
+                  </p>
                 </div>
+              </div>
+            )}
+
+          {/* Submit Button Section */}
+          <div className="flex justify-end gap-4">
+            {/* Cancel Button */}
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={updateLoading}
+              className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <span>Cancel</span>
+            </button>
+
+            {/* Save Draft Button (only for drafts) */}
+            {batchIsDraft && (
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, false)}
+                disabled={updateLoading || !canUpdateBatch}
+                className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {updateLoading ? (
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" />
+                    <span>Saving Draft...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Save Draft</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Save Button - different logic based on batch status */}
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, true)}
+              disabled={
+                updateLoading ||
+                (batchIsDraft ? !canFinalizeBatch : !canUpdateFinalizedBatch)
+              }
+              className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {updateLoading ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  <span>{batchIsDraft ? "Finalizing..." : "Saving..."}</span>
+                </>
+              ) : (
+                <>
+                  <span>{batchIsDraft ? "Save & Finalize" : "Save"}</span>
+                </>
               )}
-
-{/* Submit Button Section - Updated */}
-<div className="flex justify-end gap-4">
-  {/* Cancel Button */}
-  <button
-    type="button"
-    onClick={handleCancel}
-    disabled={updateLoading}
-    className={`flex items-center justify-center space-x-2 px-6 py-3 ${theme.cardSecondary} border ${theme.borderSecondary} text-${theme.textPrimary} font-medium rounded-lg shadow-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-  >
-    <span>Cancel</span>
-  </button>
-
-  {/* Save Draft Button (only for drafts) */}
-  {batchIsDraft && (
-    <button
-      type="button"
-      onClick={(e) => handleSubmit(e, false)}
-      disabled={updateLoading || !canUpdateBatch}
-      className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-    >
-      {updateLoading ? (
-        <>
-          <Loader className="w-5 h-5 animate-spin" />
-          <span>Saving Draft...</span>
-        </>
-      ) : (
-        <>
-          <span>Save Draft</span>
-        </>
-      )}
-    </button>
-  )}
-
-  {/* Save Button (finalizes draft or updates finalized batch) */}
-  <button
-    type="button"
-    onClick={(e) => handleSubmit(e, true)}
-    disabled={updateLoading || (batchIsDraft ? !canFinalizeBatch : !canUpdateBatch)}
-    className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
-  >
-    {updateLoading ? (
-      <>
-        <Loader className="w-5 h-5 animate-spin" />
-        <span>{batchIsDraft ? "Finalizing..." : "Saving..."}</span>
-      </>
-    ) : (
-      <>
-        <span>{batchIsDraft ? "Save & Finalize" : "Save"}</span>
-      </>
-    )}
-  </button>
-</div>
+            </button>
+          </div>
         </form>
       </div>
 
