@@ -39,7 +39,7 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
     setBulkLoading(false);
   };
 
-  // Validation functions for each field
+  // Updated validation functions
   const validateField = (field, value, lineIndex) => {
     const errors = [];
     
@@ -61,8 +61,8 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
         if (!value || value.trim().length === 0) {
           errors.push(`Line ${lineIndex}: Strength is required`);
         } else {
-          if (!/^[a-zA-Z0-9]*$/.test(value)) {
-            errors.push(`Line ${lineIndex}: Strength can only contain alphabets and digits`);
+          if (!/^[a-zA-Z0-9 ]*$/.test(value)) {
+            errors.push(`Line ${lineIndex}: Strength can only contain alphabets, digits and spaces`);
           }
           if (value.length > 10) {
             errors.push(`Line ${lineIndex}: Strength cannot exceed 10 characters`);
@@ -74,8 +74,8 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
         if (!value || value.trim().length === 0) {
           errors.push(`Line ${lineIndex}: Type is required`);
         } else {
-          if (!/^[a-zA-Z0-9]*$/.test(value)) {
-            errors.push(`Line ${lineIndex}: Type can only contain alphabets and digits`);
+          if (!/^[a-zA-Z0-9 ]*$/.test(value)) {
+            errors.push(`Line ${lineIndex}: Type can only contain alphabets, digits and spaces`);
           }
           if (value.length > 10) {
             errors.push(`Line ${lineIndex}: Type cannot exceed 10 characters`);
@@ -87,8 +87,8 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
         if (!value || value.trim().length === 0) {
           errors.push(`Line ${lineIndex}: Manufacturer is required`);
         } else {
-          if (!/^[a-zA-Z0-9]*$/.test(value)) {
-            errors.push(`Line ${lineIndex}: Manufacturer can only contain alphabets and digits`);
+          if (!/^[a-zA-Z0-9 ]*$/.test(value)) {
+            errors.push(`Line ${lineIndex}: Manufacturer can only contain alphabets, digits and spaces`);
           }
           if (value.length > 20) {
             errors.push(`Line ${lineIndex}: Manufacturer cannot exceed 20 characters`);
@@ -288,21 +288,21 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
     >
       <div className="p-6">
         {/* CSV Format Information */}
-        <div className="mb-6">
-          <div className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4`}>
-            <h4 className="font-medium text-blue-700 dark:text-blue-300 mb-2">CSV Format Requirements:</h4>
-            <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
-              <li>• Name (max 50 chars, alphabets/digits/spaces only)</li>
-              <li>• Strength (max 10 chars, alphabets/digits only)</li>
-              <li>• Type (max 10 chars, alphabets/digits only)</li>
-              <li>• Manufacturer (max 20 chars, alphabets/digits only)</li>
-              <li>• Formula (max 40 chars, alphabets/digits/spaces only)</li>
-            </ul>
-            <p className="text-xs text-blue-500 dark:text-blue-400 mt-2">
-              Example: Paracetamol,500mg,Tab,GSK,Acetaminophen
-            </p>
-          </div>
+      <div className="mb-6">
+        <div className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4`}>
+          <h4 className="font-medium text-blue-700 dark:text-blue-300 mb-2">CSV Format Requirements:</h4>
+          <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+            <li>• Name (max 50 chars, alphabets/digits/spaces only)</li>
+            <li>• Strength (max 10 chars, alphabets/digits/spaces only)</li>
+            <li>• Type (max 10 chars, alphabets/digits/spaces only)</li>
+            <li>• Manufacturer (max 20 chars, alphabets/digits/spaces only)</li>
+            <li>• Formula (max 40 chars, alphabets/digits/spaces only)</li>
+          </ul>
+          <p className="text-xs text-blue-500 dark:text-blue-400 mt-2">
+            Example: Paracetamol,500mg,Tab,GSK,Acetaminophen Formula
+          </p>
         </div>
+      </div>
 
         {/* File Upload Section */}
         <div className="mb-6">
