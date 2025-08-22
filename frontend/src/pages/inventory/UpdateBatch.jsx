@@ -27,7 +27,7 @@ import {
   getMedicineById,
   getMedicineByName,
 } from "../../constants/selectOptions";
-import { getBatchById, updateBatchById, finalizeBatch, getMedicinesDropdown  } from "../../api/api";
+import { getBatchById, updateBatchById, getMedicinesDropdown  } from "../../api/api";
 import { useAuthStore } from "../../store/authStore";
 import { useBatchUpdateStore } from "../../store/batchUpdateStore";
 import Modal from "../../components/UI/Modal";
@@ -324,8 +324,35 @@ const [editMiscellaneousValue, setEditMiscellaneousValue] = useState("");
   const isPriceExceeded =
     totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0);
 
-  const canUpdateBatch = !hasPriceMismatch && medicines && medicines.length > 0 && editingIndex === null && !editingMiscellaneous;
+  // Update the canUpdateBatch validation (around line 200)
+  const canUpdateBatch = useMemo(() => {
+    // Always check if nothing is in edit mode
+    if (editingIndex !== null || editingMiscellaneous) {
+      return false;
+    }
+    
+    // For draft operations, always allow (no validation)
+    return true;
+  }, [editingIndex, editingMiscellaneous]);
 
+  // Add new validation specifically for finalizing batches
+  const canFinalizeBatch = useMemo(() => {
+    // Check if nothing is in edit mode
+    if (editingIndex !== null || editingMiscellaneous) {
+      return false;
+    }
+    
+    // For finalizing, require strict validation
+    return !hasPriceMismatch && medicines && medicines.length > 0;
+  }, [hasPriceMismatch, medicines, editingIndex, editingMiscellaneous]);
+
+  // Update the price exceeded validation for drafts
+  const isPriceExceededForDraft = useMemo(() => {
+    if (batchIsDraft) {
+      return totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0);
+    }
+    return isPriceExceeded;
+  }, [batchIsDraft, totalWithMiscellaneous, batchDetails, isPriceExceeded]);
 
   const handleEditMiscellaneous = () => {
   setEditingMiscellaneous(true);
@@ -611,33 +638,6 @@ const handleMedicineSelect = (medicine) => {
     setError("");
   };
 
-  const handleFinalize = async () => {
-    setFinalizeLoading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      await finalizeBatch(batchId);
-      setSuccess("Batch finalized successfully!");
-      setBatchIsDraft(false); // Update local state
-
-      // Optional: Refresh batch data
-      const updatedBatch = await getBatchById(batchId);
-      setBatchDetails(updatedBatch.data);
-
-      setTimeout(() => {
-        navigate(redirectPath);
-      }, 1500);
-    } catch (error) {
-      setError(
-        error.response?.data?.message ||
-        "Failed to finalize batch. Please try again."
-      );
-    } finally {
-      setFinalizeLoading(false);
-    }
-  };
-
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -652,23 +652,34 @@ const handleMedicineSelect = (medicine) => {
     setEditValues((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ... existing code ...
-
   const handleSubmit = async (e, finalize = false) => {
     e.preventDefault();
 
-    if (medicines.length === 0) {
-      setError("At least one medicine is required");
-      return;
-    }
-
-    if (hasPriceMismatch) {
-      if (isPriceExceeded) {
-        setError(
-          "Total medicine price has exceeded against this Cheque Number"
-        );
+    // For draft saves, only check if price exceeds batch price
+    if (batchIsDraft && !finalize) {
+      if (totalWithMiscellaneous > parseFloat(batchDetails?.overallPrice || 0)) {
+        setError("Total amount cannot exceed the batch price");
+        return;
       }
-      return;
+    } else {
+      // For finalizing drafts or updating finalized batches, apply strict validation
+      if (medicines.length === 0) {
+        setError("At least one medicine is required");
+        return;
+      }
+
+      if (hasPriceMismatch) {
+        if (isPriceExceeded) {
+          setError(
+            "Total medicine price has exceeded against this Cheque Number"
+          );
+        } else {
+          setError(
+            "Total medicine and miscellaneous amount must match the batch price exactly"
+          );
+        }
+        return;
+      }
     }
 
     setUpdateLoading(true);
@@ -701,14 +712,13 @@ const handleMedicineSelect = (medicine) => {
 
       if (batchIsDraft && finalize) {
         setSuccess("Batch finalized successfully!");
-        setBatchIsDraft(false); // Update local state
+        setBatchIsDraft(false);
       } else if (batchIsDraft) {
         setSuccess("Draft saved successfully!");
       } else {
         setSuccess("Batch updated successfully!");
       }
 
-      // Clear persistent data after successful submit
       clearBatchData(batchId);
       navigate(redirectPath);
     } catch (error) {
@@ -720,6 +730,7 @@ const handleMedicineSelect = (medicine) => {
       setUpdateLoading(false);
     }
   };
+
 
   const handleCancel = () => {
     setShowCancelModal(true);
@@ -1390,31 +1401,34 @@ const handleMedicineSelect = (medicine) => {
             </div>
           </div>
 
-          {medicines &&
-            medicines.length > 0 &&
-            hasPriceMismatch &&
-            isPriceExceeded && (
-              <div
-                className={`p-4 rounded-lg border border-red-500 bg-red-500 bg-opacity-10 flex items-center mb-8`}
-              >
-                <AlertCircle className={`w-5 h-5 text-red-500 mr-2`} />
-                <div>
-                  <p className={`text-red-700 dark:text-red-300 font-medium`}>
-                    Total medicine price has exceeded against this Cheque Number
-                  </p>
-                  <p className={`text-sm ${theme.textPrimary}`}>
-                    Grand total (PKR {totalWithMiscellaneous.toFixed(2)})
-                    exceeds batch price (PKR{" "}
-                    {parseFloat(batchDetails?.overallPrice || 0).toFixed(2)}) by
-                    PKR {priceDifference.toFixed(2)}
-                  </p>
+            {/* Updated warning message - only show for finalized batches or when price exceeds */}
+            {medicines &&
+              medicines.length > 0 &&
+              ((batchIsDraft && isPriceExceededForDraft) || (!batchIsDraft && hasPriceMismatch && isPriceExceeded)) && (
+                <div
+                  className={`p-4 rounded-lg border border-red-500 bg-red-500 bg-opacity-10 flex items-center mb-8`}
+                >
+                  <AlertCircle className={`w-5 h-5 text-red-500 mr-2`} />
+                  <div>
+                    <p className={`text-red-700 dark:text-red-300 font-medium`}>
+                      {batchIsDraft 
+                        ? "Total amount cannot exceed the batch price"
+                        : "Total medicine price has exceeded against this Cheque Number"
+                      }
+                    </p>
+                    <p className={`text-sm ${theme.textPrimary}`}>
+                      Grand total (PKR {totalWithMiscellaneous.toFixed(2)})
+                      exceeds batch price (PKR{" "}
+                      {parseFloat(batchDetails?.overallPrice || 0).toFixed(2)}) by
+                      PKR {priceDifference.toFixed(2)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-          {/* Submit Button Section - Updated */}
-          <div className="flex justify-end gap-4">
-            {/* Cancel Button */}
+{/* Submit Button Section - Updated */}
+<div className="flex justify-end gap-4">
+  {/* Cancel Button */}
   <button
     type="button"
     onClick={handleCancel}
@@ -1429,7 +1443,7 @@ const handleMedicineSelect = (medicine) => {
     <button
       type="button"
       onClick={(e) => handleSubmit(e, false)}
-      disabled={updateLoading || !canUpdateBatch || editingMiscellaneous}
+      disabled={updateLoading || !canUpdateBatch}
       className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
     >
       {updateLoading ? (
@@ -1449,21 +1463,21 @@ const handleMedicineSelect = (medicine) => {
   <button
     type="button"
     onClick={(e) => handleSubmit(e, true)}
-    disabled={updateLoading || !canUpdateBatch || editingMiscellaneous}
+    disabled={updateLoading || (batchIsDraft ? !canFinalizeBatch : !canUpdateBatch)}
     className={`flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r ${theme.buttonGradient} text-white font-medium rounded-lg shadow-lg ${theme.buttonGradientHover} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
   >
     {updateLoading ? (
       <>
         <Loader className="w-5 h-5 animate-spin" />
-        <span>{batchIsDraft ? "Saving..." : "Saving..."}</span>
+        <span>{batchIsDraft ? "Finalizing..." : "Saving..."}</span>
       </>
     ) : (
       <>
-        <span>{batchIsDraft ? "Save" : "Save"}</span>
+        <span>{batchIsDraft ? "Save & Finalize" : "Save"}</span>
       </>
     )}
   </button>
-          </div>
+</div>
         </form>
       </div>
 

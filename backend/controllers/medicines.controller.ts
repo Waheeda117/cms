@@ -329,9 +329,9 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
     }
 
     const results: {
-      success: { name: string; strength: string; category: string; medicineId: number }[];
-      failed: { name: string; strength?: string; category?: string; error: string; lineNumber?: number }[];
-      duplicates: { name: string; strength: string; category: string; error: string; lineNumber?: number }[];
+      success: { name: string; strength: string; category: string; manufacturer: string; description: string; medicineId: number; lineNumber?: number }[];
+      failed: { name: string; strength: string; category: string; manufacturer: string; description: string; error: string; lineNumber?: number }[];
+      duplicates: { name: string; strength: string; category: string; manufacturer: string; description: string; error: string; lineNumber?: number }[];
     } = {
       success: [],
       failed: [],
@@ -376,7 +376,13 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
       const strengthError = validateField(strength, 'Strength', 10);
       const categoryError = validateField(category, 'Category', 10);
       const manufacturerError = validateField(manufacturer, 'Manufacturer', 20);
-      const descriptionError = validateField(description, 'Description', 40, true); // Allow empty
+      const descriptionError = validateField(description, 'Description', 40, true);
+
+      const trimmedName = name ? name.trim() : '';
+      const trimmedStrength = strength ? strength.trim() : '';
+      const trimmedCategory = category ? category.trim() : '';
+      const trimmedManufacturer = manufacturer ? manufacturer.trim() : '';
+      const trimmedDescription = description ? description.trim() : '';
 
       // If any validation fails, add to failed array
       if (nameError || strengthError || categoryError || manufacturerError || descriptionError) {
@@ -384,20 +390,16 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
           .filter(error => error.length > 0);
         
         results.failed.push({
-          name: name || 'Unknown',
-          strength: strength || '',
-          category: category || '',
+          name: trimmedName,
+          strength: trimmedStrength,
+          category: trimmedCategory,
+          manufacturer: trimmedManufacturer,
+          description: trimmedDescription,
           error: errors.join(', '),
           lineNumber: lineNumber
         });
         continue;
       }
-
-      const trimmedName = name.trim();
-      const trimmedStrength = strength.trim();
-      const trimmedCategory = category.trim();
-      const trimmedManufacturer = manufacturer.trim();
-      const trimmedDescription = description ? description.trim() : '';
 
       // Create unique key for duplicate checking (name + strength + category)
       const duplicateKey = `${trimmedName.toLowerCase()}_${trimmedStrength.toLowerCase()}_${trimmedCategory.toLowerCase()}`;
@@ -409,6 +411,8 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
           name: trimmedName,
           strength: trimmedStrength,
           category: trimmedCategory,
+          manufacturer: trimmedManufacturer,
+          description: trimmedDescription,
           error: `Duplicate entry found within CSV (first occurrence at line ${firstOccurrenceLine})`,
           lineNumber: lineNumber
         });
@@ -418,7 +422,7 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
       csvDuplicateTracker.set(duplicateKey, lineNumber);
 
       try {
-        // Check if medicine already exists in database with same name + strength + category combination
+        // Check if medicine already exists in database
         const existingMedicine = await Medicine.findOne({ 
           name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
           strength: { $regex: new RegExp(`^${trimmedStrength}$`, 'i') },
@@ -430,6 +434,8 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
             name: trimmedName,
             strength: trimmedStrength,
             category: trimmedCategory,
+            manufacturer: trimmedManufacturer,
+            description: trimmedDescription,
             error: 'Medicine with same name, strength and type already exists in database',
             lineNumber: lineNumber
           });
@@ -455,7 +461,10 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
           name: trimmedName,
           strength: trimmedStrength,
           category: trimmedCategory,
-          medicineId: medicineId
+          manufacturer: trimmedManufacturer,
+          description: trimmedDescription,
+          medicineId: medicineId,
+          lineNumber: lineNumber
         });
 
       } catch (error: any) {
@@ -463,6 +472,8 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
           name: trimmedName,
           strength: trimmedStrength,
           category: trimmedCategory,
+          manufacturer: trimmedManufacturer,
+          description: trimmedDescription,
           error: error.message || 'Failed to create medicine',
           lineNumber: lineNumber
         });
