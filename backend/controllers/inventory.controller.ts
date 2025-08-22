@@ -1046,6 +1046,9 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
             return;
         }
 
+        const isDraftBatch = existingBatch.isDraft;
+        const isFinalizingDraft = isDraftBatch && updateData.isDraft === false;
+
         // If updating a draft batch, allow all updates
         // If updating a finalized batch, prevent certain changes if needed
         if (!existingBatch.isDraft && updateData.isDraft === true) {
@@ -1057,7 +1060,7 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
         }
 
         // If finalizing a draft (isDraft: false), set finalizedAt
-        if (existingBatch.isDraft && updateData.isDraft === false) {
+        if (isFinalizingDraft) {
             updateData.finalizedAt = new Date();
         }
 
@@ -1087,77 +1090,112 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
                 return;
             }
 
-            // Check for duplicate medicine IDs within the batch
-            const medicineIds = updateData.medicines.map((med: any) => med.medicineId).filter((id: any) => id !== null && id !== undefined);
-            const uniqueMedicineIds = [...new Set(medicineIds)];
-            
-            if (medicineIds.length !== uniqueMedicineIds.length) {
-                res.status(400).json({
-                    success: false,
-                    message: "Duplicate medicines are not allowed in the same batch. Each medicine can only be added once."
-                });
-                return;
+            // For drafts, allow empty medicines array and skip duplicate check unless finalizing
+            if (!isDraftBatch || isFinalizingDraft) {
+                if (updateData.medicines.length === 0) {
+                    res.status(400).json({
+                        success: false,
+                        message: "At least one medicine is required"
+                    });
+                    return;
+                }
+
+                // Check for duplicate medicine IDs within the batch (only for finalized batches)
+                const medicineIds = updateData.medicines.map((med: any) => med.medicineId).filter((id: any) => id !== null && id !== undefined);
+                const uniqueMedicineIds = [...new Set(medicineIds)];
+                
+                if (medicineIds.length !== uniqueMedicineIds.length) {
+                    res.status(400).json({
+                        success: false,
+                        message: "Duplicate medicines are not allowed in the same batch. Each medicine can only be added once."
+                    });
+                    return;
+                }
             }
 
             // Validate each medicine in the array
             for (const medicine of updateData.medicines) {
                 const { medicineId, medicineName, quantity, price, expiryDate, dateOfPurchase, reorderLevel } = medicine;
                 
-                // Validate required fields including medicineId
-                if (!medicineId || !medicineName || !quantity || !price || !expiryDate || !dateOfPurchase || reorderLevel === undefined) {
-                    res.status(400).json({
-                        success: false,
-                        message: "All medicine fields are required: medicineId, medicineName, quantity, price, expiryDate, dateOfPurchase, reorderLevel"
-                    });
-                    return;
-                }
+                // For drafts, only validate that fields exist if they're provided
+                if (isDraftBatch && !isFinalizingDraft) {
+                    // Relaxed validation for drafts - only check basic types
+                    if (medicineId !== undefined && (!Number.isInteger(medicineId) || medicineId <= 0)) {
+                        res.status(400).json({
+                            success: false,
+                            message: "Medicine ID must be a positive integer"
+                        });
+                        return;
+                    }
+                    
+                    if (quantity !== undefined && (!Number.isInteger(quantity) || quantity <= 0)) {
+                        res.status(400).json({
+                            success: false,
+                            message: "Quantity must be a positive integer"
+                        });
+                        return;
+                    }
 
-                // Validate medicineId is a positive number
-                if (!Number.isInteger(medicineId) || medicineId <= 0) {
-                    res.status(400).json({
-                        success: false,
-                        message: "Medicine ID must be a positive integer"
-                    });
-                    return;
-                }
+                    if (price !== undefined && (isNaN(parseFloat(price)) || price <= 0)) {
+                        res.status(400).json({
+                            success: false,
+                            message: "Price must be a positive number"
+                        });
+                        return;
+                    }
+                } else {
+                    // Strict validation for finalized batches or when finalizing
+                    if (!medicineId || !medicineName || !quantity || !price || !expiryDate || !dateOfPurchase || reorderLevel === undefined) {
+                        res.status(400).json({
+                            success: false,
+                            message: "All medicine fields are required: medicineId, medicineName, quantity, price, expiryDate, dateOfPurchase, reorderLevel"
+                        });
+                        return;
+                    }
 
-                if (quantity <= 0 || price <= 0) {
-                    res.status(400).json({
-                        success: false,
-                        message: "Quantity and price must be greater than 0"
-                    });
-                    return;
-                }
+                    if (!Number.isInteger(medicineId) || medicineId <= 0) {
+                        res.status(400).json({
+                            success: false,
+                            message: "Medicine ID must be a positive integer"
+                        });
+                        return;
+                    }
 
-                // Validate quantity and price are numbers
-                if (!Number.isInteger(quantity) || isNaN(parseFloat(price))) {
-                    res.status(400).json({
-                        success: false,
-                        message: "Quantity must be an integer and price must be a valid number"
-                    });
-                    return;
-                }
+                    if (quantity <= 0 || price <= 0) {
+                        res.status(400).json({
+                            success: false,
+                            message: "Quantity and price must be greater than 0"
+                        });
+                        return;
+                    }
 
-                // Validate dates
-                if (isNaN(Date.parse(expiryDate)) || isNaN(Date.parse(dateOfPurchase))) {
-                    res.status(400).json({
-                        success: false,
-                        message: "Invalid date format for expiryDate or dateOfPurchase"
-                    });
-                    return;
-                }
+                    if (!Number.isInteger(quantity) || isNaN(parseFloat(price))) {
+                        res.status(400).json({
+                            success: false,
+                            message: "Quantity must be an integer and price must be a valid number"
+                        });
+                        return;
+                    }
 
-                // Validate reorderLevel
-                if (!Number.isInteger(reorderLevel) || reorderLevel < 0) {
-                    res.status(400).json({
-                        success: false,
-                        message: "Reorder level must be a non-negative integer"
-                    });
-                    return;
+                    if (isNaN(Date.parse(expiryDate)) || isNaN(Date.parse(dateOfPurchase))) {
+                        res.status(400).json({
+                            success: false,
+                            message: "Invalid date format for expiryDate or dateOfPurchase"
+                        });
+                        return;
+                    }
+
+                    if (!Number.isInteger(reorderLevel) || reorderLevel < 0) {
+                        res.status(400).json({
+                            success: false,
+                            message: "Reorder level must be a non-negative integer"
+                        });
+                        return;
+                    }
                 }
 
                 // Calculate total amount for each medicine
-                medicine.totalAmount = quantity * price;
+                medicine.totalAmount = (quantity || 0) * (price || 0);
             }
         }
 
@@ -1183,35 +1221,59 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
             }
         }
 
-        // If both medicines and overallPrice are being updated, validate total
+        // Price validation logic - strict for finalized batches, relaxed for drafts
         if (updateData.medicines && updateData.overallPrice !== undefined) {
-            const totalMedicinesPrice = updateData.medicines.reduce((sum: number, medicine: any) => sum + medicine.totalAmount, 0);
+            const totalMedicinesPrice = updateData.medicines.reduce((sum: number, medicine: any) => sum + (medicine.totalAmount || 0), 0);
             const miscellaneousAmount = updateData.miscellaneousAmount !== undefined ? updateData.miscellaneousAmount : (existingBatch.miscellaneousAmount || 0);
             const totalWithMiscellaneous = totalMedicinesPrice + miscellaneousAmount;
-            const priceDifference = Math.abs(totalWithMiscellaneous - updateData.overallPrice);
             
-            if (priceDifference > 0.01) { // Allow small floating point tolerance
-                res.status(400).json({
-                    success: false,
-                    message: `Total medicines price (${totalMedicinesPrice.toFixed(2)}) plus miscellaneous amount (${miscellaneousAmount.toFixed(2)}) must equal overall price (${parseFloat(updateData.overallPrice).toFixed(2)}). Current difference: ${priceDifference.toFixed(2)}`
-                });
-                return;
+            // For drafts, only check if total exceeds batch price
+            if (isDraftBatch && !isFinalizingDraft) {
+                if (totalWithMiscellaneous > updateData.overallPrice) {
+                    res.status(400).json({
+                        success: false,
+                        message: `Total amount (${totalWithMiscellaneous.toFixed(2)}) cannot exceed batch price (${parseFloat(updateData.overallPrice).toFixed(2)})`
+                    });
+                    return;
+                }
+            } else {
+                // For finalized batches, require exact match
+                const priceDifference = Math.abs(totalWithMiscellaneous - updateData.overallPrice);
+                if (priceDifference > 0.01) {
+                    res.status(400).json({
+                        success: false,
+                        message: `Total medicines price (${totalMedicinesPrice.toFixed(2)}) plus miscellaneous amount (${miscellaneousAmount.toFixed(2)}) must equal overall price (${parseFloat(updateData.overallPrice).toFixed(2)}). Current difference: ${priceDifference.toFixed(2)}`
+                    });
+                    return;
+                }
             }
         }
 
-        // If only medicines are being updated but overallPrice exists, validate against existing overallPrice
+        // If only medicines are being updated but overallPrice exists, validate accordingly
         if (updateData.medicines && updateData.overallPrice === undefined && existingBatch.overallPrice) {
-            const totalMedicinesPrice = updateData.medicines.reduce((sum: number, medicine: any) => sum + medicine.totalAmount, 0);
+            const totalMedicinesPrice = updateData.medicines.reduce((sum: number, medicine: any) => sum + (medicine.totalAmount || 0), 0);
             const miscellaneousAmount = updateData.miscellaneousAmount !== undefined ? updateData.miscellaneousAmount : (existingBatch.miscellaneousAmount || 0);
             const totalWithMiscellaneous = totalMedicinesPrice + miscellaneousAmount;
-            const priceDifference = Math.abs(totalWithMiscellaneous - existingBatch.overallPrice);
             
-            if (priceDifference > 0.01) {
-                res.status(400).json({
-                    success: false,
-                    message: `Total medicines price (${totalMedicinesPrice.toFixed(2)}) plus miscellaneous amount (${miscellaneousAmount.toFixed(2)}) must equal existing overall price (${existingBatch.overallPrice.toFixed(2)}). Current difference: ${priceDifference.toFixed(2)}`
-                });
-                return;
+            // For drafts, only check if total exceeds batch price
+            if (isDraftBatch && !isFinalizingDraft) {
+                if (totalWithMiscellaneous > existingBatch.overallPrice) {
+                    res.status(400).json({
+                        success: false,
+                        message: `Total amount (${totalWithMiscellaneous.toFixed(2)}) cannot exceed batch price (${existingBatch.overallPrice.toFixed(2)})`
+                    });
+                    return;
+                }
+            } else {
+                // For finalized batches, require exact match
+                const priceDifference = Math.abs(totalWithMiscellaneous - existingBatch.overallPrice);
+                if (priceDifference > 0.01) {
+                    res.status(400).json({
+                        success: false,
+                        message: `Total medicines price (${totalMedicinesPrice.toFixed(2)}) plus miscellaneous amount (${miscellaneousAmount.toFixed(2)}) must equal existing overall price (${existingBatch.overallPrice.toFixed(2)}). Current difference: ${priceDifference.toFixed(2)}`
+                    });
+                    return;
+                }
             }
         }
 
@@ -1225,7 +1287,6 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
                 return;
             }
 
-            // Validate each attachment URL
             for (const attachment of updateData.attachments) {
                 if (typeof attachment !== 'string' || attachment.trim() === '') {
                     res.status(400).json({
@@ -1255,7 +1316,7 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
             return;
         }
 
-        // Log the update activity (will handle draft vs finalized logic internally)
+        // Log the update activity
         await ActivityLogService.logBatchUpdated(
             updatedBatch, 
             new mongoose.Types.ObjectId(req.user!._id), 
@@ -1305,7 +1366,6 @@ export const updateBatchById = async (req: AuthenticatedRequest, res: Response):
         }
 
         if (error.code === 11000) {
-            // Handle duplicate key errors
             const duplicateField = Object.keys(error.keyPattern)[0];
             res.status(400).json({
                 success: false,
