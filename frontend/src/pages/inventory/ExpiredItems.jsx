@@ -629,7 +629,7 @@ const filteredExpiredMedicines = useMemo(() => {
                                             Batch Number
                                           </th>
                                           <th className="px-4 py-2 text-left text-xs font-medium">
-                                            Bill ID
+                                            Cheque Number
                                           </th>
                                           <th className="px-4 py-2 text-center text-xs font-medium">
                                             Quantity
