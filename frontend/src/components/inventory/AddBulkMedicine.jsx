@@ -332,7 +332,7 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
           </div>
         </div>
 
-        {/* Preview Section with Line Numbers */}
+{/* Preview Section with Line Numbers */}
         {csvData && (
           <div className="mb-6">
             <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
@@ -342,15 +342,26 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
               <div className="flex">
                 {/* Line Numbers */}
                 <div className={`bg-gray-50 dark:bg-gray-800 px-3 py-3 border-r ${theme.borderSecondary} min-w-[60px]`}>
-                  <div className="text-xs text-gray-500 font-mono leading-6">
-                    {getFormattedCsvData().map((line) => (
-                      <div
-                        key={line.number}
-                        className={line.hasError ? 'text-red-500' : ''}
-                      >
-                        {line.number}
-                      </div>
-                    ))}
+                  <div className="text-xs text-gray-500 font-mono" style={{ lineHeight: '1.5', fontSize: '14px' }}>
+                    {csvData.split('\n').map((line, index) => {
+                      const lineNumber = index + 1;
+                      const formattedData = getFormattedCsvData();
+                      const hasError = formattedData[index]?.hasError || false;
+                      
+                      return (
+                        <div
+                          key={lineNumber}
+                          className={hasError ? 'text-red-500' : ''}
+                          style={{ 
+                            height: '21px', // Match textarea line height exactly
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          {lineNumber}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
                 {/* Content */}
@@ -359,11 +370,14 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
                     value={csvData}
                     onChange={(e) => handleCsvDataChange(e.target.value)}
                     rows={Math.max(10, csvData.split('\n').length)}
-                    className={`w-full px-4 py-3 ${theme.input} border-0 ${theme.focus} focus:ring-2 ${theme.textPrimary} font-mono text-sm resize-none`}
+                    className={`w-full px-4 py-3 ${theme.input} border-0 ${theme.focus} focus:ring-2 ${theme.textPrimary} font-mono resize-none`}
                     placeholder="Medicine data will appear here..."
                     style={{ 
                       lineHeight: '1.5',
-                      background: 'transparent'
+                      fontSize: '14px',
+                      background: 'transparent',
+                      padding: '12px 16px', // Match the py-3 px-4 classes
+                      margin: 0
                     }}
                   />
                 </div>
