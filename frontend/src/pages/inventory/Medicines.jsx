@@ -493,7 +493,7 @@ const Medicines = () => {
                         </div>
                       </td>
                       <td
-                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-top`}
+                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
                       >
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -506,7 +506,7 @@ const Medicines = () => {
                         </span>
                       </td>
                       <td
-                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-top`}
+                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
                       >
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -519,20 +519,20 @@ const Medicines = () => {
                         </span>
                       </td>
                       <td
-                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-top`}
+                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
                       >
                         <div className="break-words min-w-0 overflow-hidden">
                           {medicine.description || "N/A"}
                         </div>
                       </td>
                       <td
-                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-top`}
+                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
                       >
                         <div className="break-words min-w-0 overflow-hidden">
                           {medicine.manufacturer || "N/A"}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap align-top">
+                      <td className="px-6 py-4 whitespace-nowrap align-center">
                         <div className="flex justify-center items-center space-x-2">
                           {/* Don't show edit/delete for medicine with ID 1 */}
                           {medicine.medicineId !== 1 && (
