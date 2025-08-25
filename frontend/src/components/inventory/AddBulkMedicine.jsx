@@ -96,18 +96,18 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
         }
         break;
 
-      case "description":
-        if (!value || value.trim().length === 0) {
-          errors.push(`Line ${lineIndex}: Formula is required`);
-        } else {
-          if (!/^[a-zA-Z0-9 ]*$/.test(value)) {
-            errors.push(`Line ${lineIndex}: Formula can only contain alphabets, digits and spaces`);
+        case "description":
+          if (!value || value.trim().length === 0) {
+            errors.push(`Line ${lineIndex}: Formula is required`);
+          } else {
+            if (!/^[a-zA-Z0-9 ]*$/.test(value)) {
+              errors.push(`Line ${lineIndex}: Formula can only contain alphabets, digits and spaces`);
+            }
+            if (value.length > 50) {
+              errors.push(`Line ${lineIndex}: Formula cannot exceed 50 characters`);
+            }
           }
-          if (value.length > 40) {
-            errors.push(`Line ${lineIndex}: Formula cannot exceed 40 characters`);
-          }
-        }
-        break;
+          break;
 
       default:
         break;
@@ -122,10 +122,10 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
     const duplicates = [];
 
     medicines.forEach((medicine, index) => {
-      const key = `${medicine.name.toLowerCase()}_${medicine.strength.toLowerCase()}_${medicine.category.toLowerCase()}`;
+      const key = `${medicine.name.toLowerCase()}_${medicine.strength.toLowerCase()}_${medicine.category.toLowerCase()}_${medicine.manufacturer.toLowerCase()}`;
       
       if (seen.has(key)) {
-        duplicates.push(`Line ${index + 1}: Duplicate medicine found (Name: ${medicine.name}, Strength: ${medicine.strength}, Type: ${medicine.category})`);
+        duplicates.push(`Line ${index + 1}: Duplicate medicine found (Name: ${medicine.name}, Strength: ${medicine.strength}, Type: ${medicine.category}, Manufacturer: ${medicine.manufacturer})`);
       } else {
         seen.add(key);
       }
@@ -296,7 +296,7 @@ const AddBulkMedicine = ({ isOpen, onClose, onSuccess }) => {
             <li>• Strength (max 10 chars, alphabets/digits/spaces only)</li>
             <li>• Type (max 10 chars, alphabets/digits/spaces only)</li>
             <li>• Manufacturer (max 20 chars, alphabets/digits/spaces only)</li>
-            <li>• Formula (max 40 chars, alphabets/digits/spaces only)</li>
+            <li>• Formula (max 50 chars, alphabets/digits/spaces only)</li>
           </ul>
           <p className="text-xs text-blue-500 dark:text-blue-400 mt-2">
             Example: Paracetamol,500mg,Tab,GSK,Acetaminophen Formula

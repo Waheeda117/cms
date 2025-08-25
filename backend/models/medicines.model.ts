@@ -54,7 +54,7 @@ const medicineSchema = new Schema<IMedicine>(
 
 // Create indexes for efficient querying
 // medicineSchema.index({ medicineId: 1 });
-medicineSchema.index({ name: 1, strength: 1, category: 1 });
+medicineSchema.index({ name: 1, strength: 1, category: 1, manufacturer: 1 });
 medicineSchema.index({ name: 1 });
 medicineSchema.index({ isActive: 1 });
 

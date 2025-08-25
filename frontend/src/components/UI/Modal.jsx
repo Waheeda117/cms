@@ -3,10 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 
-const Modal = ({ isOpen, onClose, children, title, subtitle }) => {
+const Modal = ({ isOpen, onClose, children, title, subtitle, preventClickOutside = false }) => {
   const { theme } = useTheme();
 
   if (!isOpen) return null;
+
+  const handleBackdropClick = (e) => {
+    if (!preventClickOutside) {
+      onClose();
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -15,7 +21,7 @@ const Modal = ({ isOpen, onClose, children, title, subtitle }) => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center"
-        onClick={onClose}
+        onClick={handleBackdropClick}
       >
         {/* Backdrop */}
         <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />

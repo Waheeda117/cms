@@ -110,17 +110,18 @@ export const createMedicine = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Check if medicine with same name, strength, and category combination already exists
+    // Check if medicine with same name, strength, category, and manufacturer combination already exists
     const existingMedicine = await Medicine.findOne({ 
       name: { $regex: new RegExp(`^${name}$`, 'i') },
       strength: strength?.trim() || "",
-      category: category?.trim() || ""
+      category: category?.trim() || "",
+      manufacturer: manufacturer?.trim() || ""
     });
 
     if (existingMedicine) {
       res.status(400).json({
         success: false,
-        message: "Medicine with this name, strength, and type combination already exists"
+        message: "Medicine with this name, strength, type, and manufacturer combination already exists"
       });
       return;
     }
@@ -192,7 +193,7 @@ export const updateMedicine = async (req: AuthenticatedRequest, res: Response): 
     const { id } = req.params;
     const { name, description, category, strength, manufacturer, isActive } = req.body;
 
-    const medicine = await Medicine.findOne({ medicineId:  parseInt(id ?? "") });
+    const medicine = await Medicine.findOne({ medicineId: parseInt(id ?? "") });
 
     if (!medicine) {
       res.status(404).json({
@@ -202,20 +203,21 @@ export const updateMedicine = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Check if new name conflicts with existing medicine (excluding current one)
-    if (name && name !== medicine.name) {
-      const existingMedicine = await Medicine.findOne({ 
-        name: { $regex: new RegExp(`^${name}$`, 'i') },
-        medicineId: { $ne:  parseInt(id ?? "") }
-      });
+    // Check if new combination conflicts with existing medicine (excluding current one)
+    const existingMedicine = await Medicine.findOne({ 
+      name: { $regex: new RegExp(`^${name || medicine.name}$`, 'i') },
+      strength: strength?.trim() || medicine.strength || "",
+      category: category?.trim() || medicine.category || "",
+      manufacturer: manufacturer?.trim() || medicine.manufacturer || "",
+      medicineId: { $ne: parseInt(id ?? "") }
+    });
 
-      if (existingMedicine) {
-        res.status(400).json({
-          success: false,
-          message: "Medicine with this name already exists"
-        });
-        return;
-      }
+    if (existingMedicine) {
+      res.status(400).json({
+        success: false,
+        message: "Medicine with this name, strength, type, and manufacturer combination already exists"
+      });
+      return;
     }
 
     // Update fields
@@ -376,7 +378,7 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
       const strengthError = validateField(strength, 'Strength', 10);
       const categoryError = validateField(category, 'Category', 10);
       const manufacturerError = validateField(manufacturer, 'Manufacturer', 20);
-      const descriptionError = validateField(description, 'Description', 40, true);
+      const descriptionError = validateField(description, 'Description', 50, true);
 
       const trimmedName = name ? name.trim() : '';
       const trimmedStrength = strength ? strength.trim() : '';
@@ -401,8 +403,8 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
         continue;
       }
 
-      // Create unique key for duplicate checking (name + strength + category)
-      const duplicateKey = `${trimmedName.toLowerCase()}_${trimmedStrength.toLowerCase()}_${trimmedCategory.toLowerCase()}`;
+      // Create unique key for duplicate checking (name + strength + category + manufacturer)
+      const duplicateKey = `${trimmedName.toLowerCase()}_${trimmedStrength.toLowerCase()}_${trimmedCategory.toLowerCase()}_${trimmedManufacturer.toLowerCase()}`;
 
       // Check for duplicates within CSV
       if (csvDuplicateTracker.has(duplicateKey)) {
@@ -426,7 +428,8 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
         const existingMedicine = await Medicine.findOne({ 
           name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
           strength: { $regex: new RegExp(`^${trimmedStrength}$`, 'i') },
-          category: { $regex: new RegExp(`^${trimmedCategory}$`, 'i') }
+          category: { $regex: new RegExp(`^${trimmedCategory}$`, 'i') },
+          manufacturer: { $regex: new RegExp(`^${trimmedManufacturer}$`, 'i') }
         });
 
         if (existingMedicine) {
@@ -436,7 +439,7 @@ export const createBulkMedicines = async (req: AuthenticatedRequest, res: Respon
             category: trimmedCategory,
             manufacturer: trimmedManufacturer,
             description: trimmedDescription,
-            error: 'Medicine with same name, strength and type already exists in database',
+            error: 'Medicine with same name, strength, type and manufacturer already exists in database',
             lineNumber: lineNumber
           });
           continue;
