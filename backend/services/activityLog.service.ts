@@ -192,294 +192,294 @@ export class ActivityLogService {
     });
   }
 
-  /**
-   * Generate separate logs for different types of updates
-   */
-  private static generateSeparateUpdateLogs(
-    changes: any, 
-    oldBatch: IInventory, 
-    newBatch: IInventory,
-    owner: mongoose.Types.ObjectId
-  ): LogActivityParams[] {
-    const logs: LogActivityParams[] = [];
+/**
+ * Generate separate logs for different types of updates
+ */
+private static generateSeparateUpdateLogs(
+  changes: any, 
+  oldBatch: IInventory, 
+  newBatch: IInventory,
+  owner: mongoose.Types.ObjectId
+): LogActivityParams[] {
+  const logs: LogActivityParams[] = [];
 
-    // 1. Log miscellaneous amount changes separately
-    if (changes.miscellaneousAmount !== undefined && 
-        oldBatch.miscellaneousAmount !== changes.miscellaneousAmount) {
-      logs.push({
-        batchId: newBatch._id as mongoose.Types.ObjectId,
-        batchNumber: newBatch.batchNumber,
-        action: 'UPDATED',
-        details: `Batch updated: miscellaneous amount (PKR ${this.formatCurrency(oldBatch.miscellaneousAmount || 0)} → ${this.formatCurrency(changes.miscellaneousAmount)})`,
-        owner,
-        changes: [{
-          field: 'miscellaneousAmount',
-          oldValue: oldBatch.miscellaneousAmount,
-          newValue: changes.miscellaneousAmount
-        }]
-      });
-    }
-
-    // 2. Log total amount changes separately (if overall price changed)
-    if (changes.overallPrice !== undefined && 
-        oldBatch.overallPrice !== changes.overallPrice) {
-      logs.push({
-        batchId: newBatch._id as mongoose.Types.ObjectId,
-        batchNumber: newBatch.batchNumber,
-        action: 'UPDATED',
-        details: `Batch updated: Total amount (PKR ${this.formatCurrency(oldBatch.overallPrice || 0)} → ${this.formatCurrency(changes.overallPrice)})`,
-        owner,
-        changes: [{
-          field: 'overallPrice',
-          oldValue: oldBatch.overallPrice,
-          newValue: changes.overallPrice
-        }]
-      });
-    }
-
-    // 3. Log batch number changes separately
-    if (changes.batchNumber && oldBatch.batchNumber !== changes.batchNumber) {
-      logs.push({
-        batchId: newBatch._id as mongoose.Types.ObjectId,
-        batchNumber: newBatch.batchNumber,
-        action: 'UPDATED',
-        details: `Batch updated: batch number (${oldBatch.batchNumber} → ${changes.batchNumber})`,
-        owner,
-        changes: [{
-          field: 'batchNumber',
-          oldValue: oldBatch.batchNumber,
-          newValue: changes.batchNumber
-        }]
-      });
-    }
-
-    // 4. Log bill ID changes separately
-    if (changes.billID && oldBatch.billID !== changes.billID) {
-      logs.push({
-        batchId: newBatch._id as mongoose.Types.ObjectId,
-        batchNumber: newBatch.batchNumber,
-        action: 'UPDATED',
-        details: `Batch updated: cheque number (${oldBatch.billID || 'none'} → ${changes.billID})`,
-        owner,
-        changes: [{
-          field: 'billID',
-          oldValue: oldBatch.billID,
-          newValue: changes.billID
-        }]
-      });
-    }
-
-    // 5. Log medicine changes separately - one log per medicine
-    if (changes.medicines) {
-      const medicineChangeLogs = this.generateSeparateMedicineLogs(
-        oldBatch.medicines, 
-        changes.medicines, 
-        newBatch, 
-        owner
-      );
-      logs.push(...medicineChangeLogs);
-    }
-
-    // 6. Log draft note changes separately
-    if (changes.draftNote !== undefined && oldBatch.draftNote !== changes.draftNote) {
-      logs.push({
-        batchId: newBatch._id as mongoose.Types.ObjectId,
-        batchNumber: newBatch.batchNumber,
-        action: 'UPDATED',
-        details: `Batch updated: draft note updated`,
-        owner,
-        changes: [{
-          field: 'draftNote',
-          oldValue: oldBatch.draftNote || 'none',
-          newValue: changes.draftNote || 'none'
-        }]
-      });
-    }
-
-    // 7. Log attachments changes separately
-    if (changes.attachments) {
-      const oldCount = oldBatch.attachments?.length || 0;
-      const newCount = changes.attachments.length;
-      if (oldCount !== newCount) {
-        logs.push({
-          batchId: newBatch._id as mongoose.Types.ObjectId,
-          batchNumber: newBatch.batchNumber,
-          action: 'UPDATED',
-          details: `Batch updated: attachments (${oldCount} → ${newCount} files)`,
-          owner,
-          changes: [{
-            field: 'attachments',
-            oldValue: oldCount,
-            newValue: newCount
-          }]
-        });
-      }
-    }
-
-    return logs;
+  // 1. Log miscellaneous amount changes separately
+  if (changes.miscellaneousAmount !== undefined && 
+      oldBatch.miscellaneousAmount !== changes.miscellaneousAmount) {
+    logs.push({
+      batchId: newBatch._id as mongoose.Types.ObjectId,
+      batchNumber: newBatch.batchNumber,
+      action: 'UPDATED',
+      details: `Batch ${newBatch.batchNumber} updated: miscellaneous amount (PKR ${this.formatCurrency(oldBatch.miscellaneousAmount || 0)} → ${this.formatCurrency(changes.miscellaneousAmount)})`,
+      owner,
+      changes: [{
+        field: 'miscellaneousAmount',
+        oldValue: oldBatch.miscellaneousAmount,
+        newValue: changes.miscellaneousAmount
+      }]
+    });
   }
 
-  /**
-   * Generate separate logs for medicine changes - one log per medicine
-   */
-  private static generateSeparateMedicineLogs(
-    oldMedicines: any[], 
-    newMedicines: any[], 
-    batch: IInventory,
-    owner: mongoose.Types.ObjectId
-  ): LogActivityParams[] {
-    const logs: LogActivityParams[] = [];
-
-    // Create maps for easier lookup
-    const oldMedicinesMap = new Map();
-    const newMedicinesMap = new Map();
-
-    oldMedicines.forEach((med, index) => {
-      const key = med.medicineId?.toString() || med._id?.toString() || `temp_${index}`;
-      oldMedicinesMap.set(key, { ...med, originalIndex: index });
+  // 2. Log total amount changes separately (if overall price changed)
+  if (changes.overallPrice !== undefined && 
+      oldBatch.overallPrice !== changes.overallPrice) {
+    logs.push({
+      batchId: newBatch._id as mongoose.Types.ObjectId,
+      batchNumber: newBatch.batchNumber,
+      action: 'UPDATED',
+      details: `Batch ${newBatch.batchNumber} updated: Total amount (PKR ${this.formatCurrency(oldBatch.overallPrice || 0)} → ${this.formatCurrency(changes.overallPrice)})`,
+      owner,
+      changes: [{
+        field: 'overallPrice',
+        oldValue: oldBatch.overallPrice,
+        newValue: changes.overallPrice
+      }]
     });
+  }
 
-    newMedicines.forEach((med, index) => {
-      const key = med.medicineId?.toString() || med._id?.toString() || `temp_${index}`;
-      newMedicinesMap.set(key, { ...med, originalIndex: index });
+  // 3. Log batch number changes separately
+  if (changes.batchNumber && oldBatch.batchNumber !== changes.batchNumber) {
+    logs.push({
+      batchId: newBatch._id as mongoose.Types.ObjectId,
+      batchNumber: newBatch.batchNumber,
+      action: 'UPDATED',
+      details: `Batch ${newBatch.batchNumber} updated: batch number (${oldBatch.batchNumber} → ${changes.batchNumber})`,
+      owner,
+      changes: [{
+        field: 'batchNumber',
+        oldValue: oldBatch.batchNumber,
+        newValue: changes.batchNumber
+      }]
     });
+  }
 
-    // 1. Log medicine additions - one log per medicine
-    newMedicinesMap.forEach((newMed, key) => {
-      if (!oldMedicinesMap.has(key)) {
-        const totalAmount = (newMed.quantity || 0) * (newMed.price || 0);
-        
-        logs.push({
-          batchId: batch._id as mongoose.Types.ObjectId,
-          batchNumber: batch.batchNumber,
-          action: 'UPDATED',
-          details: `Batch updated: Medicine "${newMed.medicineName}" added: Quantity: ${newMed.quantity} units, Price: PKR ${this.formatCurrency(newMed.price)}, Expiry: ${this.formatDate(newMed.expiryDate)}, Total amount: PKR ${this.formatCurrency(totalAmount)}`,
-          owner,
-          changes: [{
-            field: 'medicineAdded',
-            oldValue: null,
-            newValue: {
-              medicineId: newMed.medicineId,
-              medicineName: newMed.medicineName,
-              quantity: newMed.quantity,
-              price: newMed.price,
-              expiryDate: newMed.expiryDate,
-              totalAmount: totalAmount
-            }
-          }]
-        });
-      }
+  // 4. Log bill ID changes separately
+  if (changes.billID && oldBatch.billID !== changes.billID) {
+    logs.push({
+      batchId: newBatch._id as mongoose.Types.ObjectId,
+      batchNumber: newBatch.batchNumber,
+      action: 'UPDATED',
+      details: `Batch ${newBatch.batchNumber} updated: cheque number (${oldBatch.billID || 'none'} → ${changes.billID})`,
+      owner,
+      changes: [{
+        field: 'billID',
+        oldValue: oldBatch.billID,
+        newValue: changes.billID
+      }]
     });
+  }
 
-    // 2. Log medicine removals - one log per medicine
-    oldMedicinesMap.forEach((oldMed, key) => {
-      if (!newMedicinesMap.has(key)) {
-        const totalAmount = (oldMed.quantity || 0) * (oldMed.price || 0);
-        
-        logs.push({
-          batchId: batch._id as mongoose.Types.ObjectId,
-          batchNumber: batch.batchNumber,
-          action: 'UPDATED',
-          details: `Batch updated: Medicine "${oldMed.medicineName}" removed: Quantity: ${oldMed.quantity} units, Price: PKR ${this.formatCurrency(oldMed.price)}, Expiry: ${this.formatDate(oldMed.expiryDate)}, Total amount: PKR ${this.formatCurrency(totalAmount)}`,
-          owner,
-          changes: [{
-            field: 'medicineRemoved',
-            oldValue: {
-              medicineId: oldMed.medicineId,
-              medicineName: oldMed.medicineName,
-              quantity: oldMed.quantity,
-              price: oldMed.price,
-              expiryDate: oldMed.expiryDate,
-              totalAmount: totalAmount
-            },
-            newValue: null
-          }]
-        });
-      }
+  // 5. Log medicine changes separately - one log per medicine
+  if (changes.medicines) {
+    const medicineChangeLogs = this.generateSeparateMedicineLogs(
+      oldBatch.medicines, 
+      changes.medicines, 
+      newBatch, 
+      owner
+    );
+    logs.push(...medicineChangeLogs);
+  }
+
+  // 6. Log draft note changes separately
+  if (changes.draftNote !== undefined && oldBatch.draftNote !== changes.draftNote) {
+    logs.push({
+      batchId: newBatch._id as mongoose.Types.ObjectId,
+      batchNumber: newBatch.batchNumber,
+      action: 'UPDATED',
+      details: `Batch ${newBatch.batchNumber} updated: draft note updated`,
+      owner,
+      changes: [{
+        field: 'draftNote',
+        oldValue: oldBatch.draftNote || 'none',
+        newValue: changes.draftNote || 'none'
+      }]
     });
+  }
 
-    // 3. Log changes in existing medicines - one log per medicine with changes
-    newMedicinesMap.forEach((newMed, key) => {
-      const oldMed = oldMedicinesMap.get(key);
+  // 7. Log attachments changes separately
+  if (changes.attachments) {
+    const oldCount = oldBatch.attachments?.length || 0;
+    const newCount = changes.attachments.length;
+    if (oldCount !== newCount) {
+      logs.push({
+        batchId: newBatch._id as mongoose.Types.ObjectId,
+        batchNumber: newBatch.batchNumber,
+        action: 'UPDATED',
+        details: `Batch ${newBatch.batchNumber} updated: attachments (${oldCount} → ${newCount} files)`,
+        owner,
+        changes: [{
+          field: 'attachments',
+          oldValue: oldCount,
+          newValue: newCount
+        }]
+      });
+    }
+  }
+
+  return logs;
+}
+
+/**
+ * Generate separate logs for medicine changes - one log per medicine
+ */
+private static generateSeparateMedicineLogs(
+  oldMedicines: any[], 
+  newMedicines: any[], 
+  batch: IInventory,
+  owner: mongoose.Types.ObjectId
+): LogActivityParams[] {
+  const logs: LogActivityParams[] = [];
+
+  // Create maps for easier lookup
+  const oldMedicinesMap = new Map();
+  const newMedicinesMap = new Map();
+
+  oldMedicines.forEach((med, index) => {
+    const key = med.medicineId?.toString() || med._id?.toString() || `temp_${index}`;
+    oldMedicinesMap.set(key, { ...med, originalIndex: index });
+  });
+
+  newMedicines.forEach((med, index) => {
+    const key = med.medicineId?.toString() || med._id?.toString() || `temp_${index}`;
+    newMedicinesMap.set(key, { ...med, originalIndex: index });
+  });
+
+  // 1. Log medicine additions - one log per medicine
+  newMedicinesMap.forEach((newMed, key) => {
+    if (!oldMedicinesMap.has(key)) {
+      const totalAmount = (newMed.quantity || 0) * (newMed.price || 0);
       
-      if (oldMed) {
-        const medicineChanges = [];
-        const changeDetails = [];
-        
-        // Calculate total amounts for this medicine
-        const oldTotal = (oldMed.quantity || 0) * (oldMed.price || 0);
-        const newTotal = (newMed.quantity || 0) * (newMed.price || 0);
-        
-        // Check quantity changes
-        if (oldMed.quantity !== newMed.quantity) {
-          medicineChanges.push({
-            field: `medicine_${newMed.medicineName}_quantity`,
-            oldValue: oldMed.quantity,
-            newValue: newMed.quantity
-          });
-          changeDetails.push(`Quantity: ${oldMed.quantity} → ${newMed.quantity} units`);
-        }
+      logs.push({
+        batchId: batch._id as mongoose.Types.ObjectId,
+        batchNumber: batch.batchNumber,
+        action: 'UPDATED',
+        details: `Batch ${batch.batchNumber} updated: Medicine "${newMed.medicineName}" added: Quantity: ${newMed.quantity} units, Price: PKR ${this.formatCurrency(newMed.price)}, Expiry: ${this.formatDate(newMed.expiryDate)}, Total amount: PKR ${this.formatCurrency(totalAmount)}`,
+        owner,
+        changes: [{
+          field: 'medicineAdded',
+          oldValue: null,
+          newValue: {
+            medicineId: newMed.medicineId,
+            medicineName: newMed.medicineName,
+            quantity: newMed.quantity,
+            price: newMed.price,
+            expiryDate: newMed.expiryDate,
+            totalAmount: totalAmount
+          }
+        }]
+      });
+    }
+  });
 
-        // Check price changes
-        if (oldMed.price !== newMed.price) {
-          medicineChanges.push({
-            field: `medicine_${newMed.medicineName}_price`,
-            oldValue: oldMed.price,
-            newValue: newMed.price
-          });
-          changeDetails.push(`Price: PKR ${this.formatCurrency(oldMed.price)} → ${this.formatCurrency(newMed.price)}`);
-        }
+  // 2. Log medicine removals - one log per medicine
+  oldMedicinesMap.forEach((oldMed, key) => {
+    if (!newMedicinesMap.has(key)) {
+      const totalAmount = (oldMed.quantity || 0) * (oldMed.price || 0);
+      
+      logs.push({
+        batchId: batch._id as mongoose.Types.ObjectId,
+        batchNumber: batch.batchNumber,
+        action: 'UPDATED',
+        details: `Batch ${batch.batchNumber} updated: Medicine "${oldMed.medicineName}" removed: Quantity: ${oldMed.quantity} units, Price: PKR ${this.formatCurrency(oldMed.price)}, Expiry: ${this.formatDate(oldMed.expiryDate)}, Total amount: PKR ${this.formatCurrency(totalAmount)}`,
+        owner,
+        changes: [{
+          field: 'medicineRemoved',
+          oldValue: {
+            medicineId: oldMed.medicineId,
+            medicineName: oldMed.medicineName,
+            quantity: oldMed.quantity,
+            price: oldMed.price,
+            expiryDate: oldMed.expiryDate,
+            totalAmount: totalAmount
+          },
+          newValue: null
+        }]
+      });
+    }
+  });
 
-        // Check expiry date changes
-        const oldExpiryDate = oldMed.expiryDate ? new Date(oldMed.expiryDate) : null;
-        const newExpiryDate = newMed.expiryDate ? new Date(newMed.expiryDate) : null;
-        const expiryChanged = oldExpiryDate?.getTime() !== newExpiryDate?.getTime();
-        
-        if (expiryChanged) {
-          medicineChanges.push({
-            field: `medicine_${newMed.medicineName}_expiry`,
-            oldValue: this.formatDate(oldExpiryDate),
-            newValue: this.formatDate(newExpiryDate)
-          });
-          changeDetails.push(`Expiry Date: ${this.formatDate(oldExpiryDate)} → ${this.formatDate(newExpiryDate)}`);
-        }
-
-        // Add total amount change if price or quantity changed
-        if (oldTotal !== newTotal && (oldMed.quantity !== newMed.quantity || oldMed.price !== newMed.price)) {
-          medicineChanges.push({
-            field: `medicine_${newMed.medicineName}_total`,
-            oldValue: oldTotal,
-            newValue: newTotal
-          });
-          changeDetails.push(`Total amount: PKR ${this.formatCurrency(oldTotal)} → ${this.formatCurrency(newTotal)}`);
-        }
-
-        // Check medicine name changes
-        if (oldMed.medicineName !== newMed.medicineName) {
-          medicineChanges.push({
-            field: `medicine_name_change`,
-            oldValue: oldMed.medicineName,
-            newValue: newMed.medicineName
-          });
-          changeDetails.push(`Medicine Name: "${oldMed.medicineName}" → "${newMed.medicineName}"`);
-        }
-
-        // Create one log per medicine if there are changes
-        if (medicineChanges.length > 0) {
-          logs.push({
-            batchId: batch._id as mongoose.Types.ObjectId,
-            batchNumber: batch.batchNumber,
-            action: 'UPDATED',
-            details: `Batch updated: Medicine "${newMed.medicineName}": ${changeDetails.join(', ')}`,
-            owner,
-            changes: medicineChanges
-          });
-        }
+  // 3. Log changes in existing medicines - one log per medicine with changes
+  newMedicinesMap.forEach((newMed, key) => {
+    const oldMed = oldMedicinesMap.get(key);
+    
+    if (oldMed) {
+      const medicineChanges = [];
+      const changeDetails = [];
+      
+      // Calculate total amounts for this medicine
+      const oldTotal = (oldMed.quantity || 0) * (oldMed.price || 0);
+      const newTotal = (newMed.quantity || 0) * (newMed.price || 0);
+      
+      // Check quantity changes
+      if (oldMed.quantity !== newMed.quantity) {
+        medicineChanges.push({
+          field: `medicine_${newMed.medicineName}_quantity`,
+          oldValue: oldMed.quantity,
+          newValue: newMed.quantity
+        });
+        changeDetails.push(`Quantity: ${oldMed.quantity} → ${newMed.quantity} units`);
       }
-    });
 
-    return logs;
-  }
+      // Check price changes
+      if (oldMed.price !== newMed.price) {
+        medicineChanges.push({
+          field: `medicine_${newMed.medicineName}_price`,
+          oldValue: oldMed.price,
+          newValue: newMed.price
+        });
+        changeDetails.push(`Price: PKR ${this.formatCurrency(oldMed.price)} → ${this.formatCurrency(newMed.price)}`);
+      }
+
+      // Check expiry date changes
+      const oldExpiryDate = oldMed.expiryDate ? new Date(oldMed.expiryDate) : null;
+      const newExpiryDate = newMed.expiryDate ? new Date(newMed.expiryDate) : null;
+      const expiryChanged = oldExpiryDate?.getTime() !== newExpiryDate?.getTime();
+      
+      if (expiryChanged) {
+        medicineChanges.push({
+          field: `medicine_${newMed.medicineName}_expiry`,
+          oldValue: this.formatDate(oldExpiryDate),
+          newValue: this.formatDate(newExpiryDate)
+        });
+        changeDetails.push(`Expiry Date: ${this.formatDate(oldExpiryDate)} → ${this.formatDate(newExpiryDate)}`);
+      }
+
+      // Add total amount change if price or quantity changed
+      if (oldTotal !== newTotal && (oldMed.quantity !== newMed.quantity || oldMed.price !== newMed.price)) {
+        medicineChanges.push({
+          field: `medicine_${newMed.medicineName}_total`,
+          oldValue: oldTotal,
+          newValue: newTotal
+        });
+        changeDetails.push(`Total amount: PKR ${this.formatCurrency(oldTotal)} → ${this.formatCurrency(newTotal)}`);
+      }
+
+      // Check medicine name changes
+      if (oldMed.medicineName !== newMed.medicineName) {
+        medicineChanges.push({
+          field: `medicine_name_change`,
+          oldValue: oldMed.medicineName,
+          newValue: newMed.medicineName
+        });
+        changeDetails.push(`Medicine Name: "${oldMed.medicineName}" → "${newMed.medicineName}"`);
+      }
+
+      // Create one log per medicine if there are changes
+      if (medicineChanges.length > 0) {
+        logs.push({
+          batchId: batch._id as mongoose.Types.ObjectId,
+          batchNumber: batch.batchNumber,
+          action: 'UPDATED',
+          details: `Batch ${batch.batchNumber} updated: Medicine "${newMed.medicineName}": ${changeDetails.join(', ')}`,
+          owner,
+          changes: medicineChanges
+        });
+      }
+    }
+  });
+
+  return logs;
+}
 
   /**
    * Legacy function for backward compatibility - now returns first log only
