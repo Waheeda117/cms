@@ -447,117 +447,117 @@ const Medicines = () => {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
-              <colgroup>
-                <col className="w-[18%]" />{" "}
-                {/* Name - wider for longer names */}
-                <col className="w-[18%]" /> {/* Strength */}
-                <col className="w-[18%]" /> {/* Type */}
-                <col className="w-[18%]" />{" "}
-                {/* Formula - wider for longer descriptions */}
-                <col className="w-[18%]" /> {/* Manufacturer */}
-                <col className="w-[10%]" /> {/* Actions */}
-              </colgroup>
-              <thead>
-                <tr className={`${theme.borderSecondary} border-b`}>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Name</span>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Strength</span>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Type</span>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Formula</span>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Manufacturer</span>
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">
-                    <span className={`${theme.textMuted}`}>Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredMedicines.map((medicine) => (
-                  <tr
-                    key={medicine._id}
-                    className={`${theme.borderSecondary} border-b hover:bg-opacity-50 ${theme.cardSecondary} transition-colors`}
-                  >
-                    <td className={`px-6 py-4 ${theme.textSecondary}`}>
-                      <div className="flex items-center">
-                        <div className="font-medium break-words min-w-0">
-                          {medicine.name}
-                        </div>
-                      </div>
-                    </td>
-                    <td
-                      className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
-                    >
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          medicine.strength
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-                        }`}
-                      >
-                        {medicine.strength || "N/A"}
-                      </span>
-                    </td>
-                    <td
-                      className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
-                    >
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          medicine.category
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-                        }`}
-                      >
-                        {medicine.category || "N/A"}
-                      </span>
-                    </td>
-                    <td
-                      className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
-                    >
-                      <div className="break-words min-w-0">
-                        {medicine.description || "N/A"}
-                      </div>
-                    </td>
-                    <td
-                      className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
-                    >
-                      <div className="break-words min-w-0">
-                        {medicine.manufacturer || "N/A"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap align-center">
-                      <div className="flex justify-center items-center space-x-2">
-                        {/* Don't show edit/delete for medicine with ID 1 */}
-                        {medicine.medicineId !== 1 && (
-                          <>
-                            <button
-                              className={`p-1.5 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}
-                              onClick={() => openEditModal(medicine)}
-                            >
-                              <Edit className="w-4 h-4 text-blue-500" />
-                            </button>
-                            <button
-                              className={`p-1.5 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}
-                              onClick={() => openDeleteModal(medicine)}
-                            >
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+            <div className="min-w-full inline-block align-middle">
+              <table className="w-full table-fixed min-w-[800px]">
+                <colgroup>
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[10%]" />
+                </colgroup>
+                <thead>
+                  <tr className={`${theme.borderSecondary} border-b`}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      <span className={`${theme.textMuted}`}>Name</span>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      <span className={`${theme.textMuted}`}>Strength</span>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      <span className={`${theme.textMuted}`}>Type</span>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      <span className={`${theme.textMuted}`}>Formula</span>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      <span className={`${theme.textMuted}`}>Manufacturer</span>
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">
+                      <span className={`${theme.textMuted}`}>Actions</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredMedicines.map((medicine) => (
+                    <tr
+                      key={medicine._id}
+                      className={`${theme.borderSecondary} border-b hover:bg-opacity-50 ${theme.cardSecondary} transition-colors`}
+                    >
+                      <td className={`px-6 py-4 ${theme.textSecondary}`}>
+                        <div className="flex items-center">
+                          <div className="font-medium break-words min-w-0 overflow-hidden">
+                            {medicine.name}
+                          </div>
+                        </div>
+                      </td>
+                      <td
+                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
+                      >
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            medicine.strength
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                              : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+                          }`}
+                        >
+                          {medicine.strength || "N/A"}
+                        </span>
+                      </td>
+                      <td
+                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
+                      >
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            medicine.category
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                              : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+                          }`}
+                        >
+                          {medicine.category || "N/A"}
+                        </span>
+                      </td>
+                      <td
+                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
+                      >
+                        <div className="break-words min-w-0 overflow-hidden">
+                          {medicine.description || "N/A"}
+                        </div>
+                      </td>
+                      <td
+                        className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
+                      >
+                        <div className="break-words min-w-0 overflow-hidden">
+                          {medicine.manufacturer || "N/A"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap align-center">
+                        <div className="flex justify-center items-center space-x-2">
+                          {/* Don't show edit/delete for medicine with ID 1 */}
+                          {medicine.medicineId !== 1 && (
+                            <>
+                              <button
+                                className={`p-1.5 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}
+                                onClick={() => openEditModal(medicine)}
+                              >
+                                <Edit className="w-4 h-4 text-blue-500" />
+                              </button>
+                              <button
+                                className={`p-1.5 rounded-lg ${theme.cardSecondary} hover:bg-opacity-70 transition-colors`}
+                                onClick={() => openDeleteModal(medicine)}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Empty State */}
