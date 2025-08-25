@@ -63,10 +63,6 @@ const Medicines = () => {
 
   const { user } = useAuthStore();
 
-  // Dropdown options
-  const strengthOptions = ["100mg", "200mg", "300mg", "400mg", "500mg", "600mg", "1g"];
-  const categoryOptions = ["Tab", "Syp", "Drop", "Inj", "Ointment"];
-
   // Fetch medicines data
   const fetchData = async (page = currentPage, limit = itemsPerPage) => {
     try {
@@ -131,11 +127,23 @@ const Medicines = () => {
         if (!value || value.trim().length === 0) {
           return "Strength is required";
         }
+        if (!/^[a-zA-Z0-9 ]*$/.test(value)) {
+          return "Only alphabets, digits and spaces are allowed";
+        }
+        if (value.length > 10) {
+          return "Strength cannot exceed 10 characters";
+        }
         return "";
 
       case "category":
         if (!value || value.trim().length === 0) {
           return "Type is required";
+        }
+        if (!/^[a-zA-Z0-9 ]*$/.test(value)) {
+          return "Only alphabets, digits and spaces are allowed";
+        }
+        if (value.length > 10) {
+          return "Type cannot exceed 10 characters";
         }
         return "";
 
@@ -439,10 +447,19 @@ const Medicines = () => {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[18%]" />{" "}
+                {/* Name - wider for longer names */}
+                <col className="w-[18%]" /> {/* Strength */}
+                <col className="w-[18%]" /> {/* Type */}
+                <col className="w-[18%]" />{" "}
+                {/* Formula - wider for longer descriptions */}
+                <col className="w-[18%]" /> {/* Manufacturer */}
+                <col className="w-[10%]" /> {/* Actions */}
+              </colgroup>
               <thead>
                 <tr className={`${theme.borderSecondary} border-b`}>
-
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     <span className={`${theme.textMuted}`}>Name</span>
                   </th>
@@ -471,17 +488,14 @@ const Medicines = () => {
                   >
                     <td className={`px-6 py-4 ${theme.textSecondary}`}>
                       <div className="flex items-center">
-                        <div
-                          className={`w-10 h-10 rounded-full ${theme.cardSecondary} flex items-center justify-center mr-3`}
-                        >
-                          <Pill className="w-5 h-5 text-emerald-500" />
-                        </div>
-                        <div className="font-medium truncate">
+                        <div className="font-medium break-words min-w-0">
                           {medicine.name}
                         </div>
                       </div>
                     </td>
-                    <td className={`px-6 py-4 text-sm ${theme.textSecondary}`}>
+                    <td
+                      className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
+                    >
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           medicine.strength
@@ -492,7 +506,9 @@ const Medicines = () => {
                         {medicine.strength || "N/A"}
                       </span>
                     </td>
-                    <td className={`px-6 py-4 text-sm ${theme.textSecondary}`}>
+                    <td
+                      className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
+                    >
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           medicine.category
@@ -503,21 +519,21 @@ const Medicines = () => {
                         {medicine.category || "N/A"}
                       </span>
                     </td>
-                    <td className={`px-6 py-4 text-sm ${theme.textSecondary}`}>
-                      <div className="max-w-xs">
-                        <div className="truncate" title={medicine.description}>
-                          {medicine.description || "N/A"}
-                        </div>
+                    <td
+                      className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
+                    >
+                      <div className="break-words min-w-0">
+                        {medicine.description || "N/A"}
                       </div>
                     </td>
-                    <td className={`px-6 py-4 text-sm ${theme.textSecondary}`}>
-                      <div className="max-w-xs">
-                        <div className="truncate" title={medicine.manufacturer}>
-                          {medicine.manufacturer || "N/A"}
-                        </div>
+                    <td
+                      className={`px-6 py-4 text-sm ${theme.textSecondary} align-center`}
+                    >
+                      <div className="break-words min-w-0">
+                        {medicine.manufacturer || "N/A"}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap align-center">
                       <div className="flex justify-center items-center space-x-2">
                         {/* Don't show edit/delete for medicine with ID 1 */}
                         {medicine.medicineId !== 1 && (
@@ -650,20 +666,16 @@ const Medicines = () => {
               >
                 Strength *
               </label>
-              <select
+              <input
+                type="text"
                 value={addForm.strength}
                 onChange={(e) =>
                   handleAddFormChange("strength", e.target.value)
                 }
                 className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
-              >
-                <option value="">Select strength</option>
-                {strengthOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                placeholder="Enter strength"
+                maxLength={10}
+              />
               {validationErrors.strength && (
                 <p className="text-red-500 text-xs mt-1">
                   {validationErrors.strength}
@@ -681,20 +693,16 @@ const Medicines = () => {
               >
                 Type *
               </label>
-              <select
+              <input
+                type="text"
                 value={addForm.category}
                 onChange={(e) =>
                   handleAddFormChange("category", e.target.value)
                 }
                 className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
-              >
-                <option value="">Select type</option>
-                {categoryOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                placeholder="Enter type"
+                maxLength={10}
+              />
               {validationErrors.category && (
                 <p className="text-red-500 text-xs mt-1">
                   {validationErrors.category}
@@ -838,20 +846,16 @@ const Medicines = () => {
               >
                 Strength *
               </label>
-              <select
+              <input
+                type="text"
                 value={editForm.strength}
                 onChange={(e) =>
                   handleEditFormChange("strength", e.target.value)
                 }
                 className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
-              >
-                <option value="">Select strength</option>
-                {strengthOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                placeholder="Enter strength"
+                maxLength={10}
+              />
               {validationErrors.strength && (
                 <p className="text-red-500 text-xs mt-1">
                   {validationErrors.strength}
@@ -869,20 +873,16 @@ const Medicines = () => {
               >
                 Type *
               </label>
-              <select
+              <input
+                type="text"
                 value={editForm.category}
                 onChange={(e) =>
                   handleEditFormChange("category", e.target.value)
                 }
                 className={`w-full px-4 py-3 ${theme.input} rounded-lg ${theme.borderSecondary} border ${theme.focus} focus:ring-2 ${theme.textPrimary}`}
-              >
-                <option value="">Select type</option>
-                {categoryOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                placeholder="Enter type"
+                maxLength={10}
+              />
               {validationErrors.category && (
                 <p className="text-red-500 text-xs mt-1">
                   {validationErrors.category}

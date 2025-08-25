@@ -23,12 +23,13 @@ const AddBulkMedicineResults = ({ isOpen, onClose, results }) => {
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Bulk Upload Complete"
-      subtitle={`Processed ${results.totalProcessed} medicine(s)`}
-    >
+  <Modal
+    isOpen={isOpen}
+    onClose={onClose}
+    title="Bulk Upload Complete"
+    subtitle={`Processed ${results.totalProcessed} medicine(s)`}
+    preventClickOutside={true}
+  >
       <div className="p-6 space-y-6">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4">
